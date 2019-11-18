@@ -3,6 +3,7 @@ import os
 import argparse
 import logging
 import time
+import settings
 from zipfile import ZipFile
 
 logger = logging.getLogger(__name__)
@@ -30,15 +31,23 @@ parser.add_argument(
     help='Base URL for OSF API.'
 )
 
-BASE_URL = 'https://files.osf.io/'
 
-def consume_files(guid, token, directory, base_url=BASE_URL):
+def consume_files(guid, token, directory, retry=True):
+    path = os.path.join(directory, guid)
+    zip_url = f'{settings.OSF_API_URL}v1/resources/{guid}/providers/osfstorage/?zip='
 
-    zip_url = '{}v1/resources/{}/providers/osfstorage/?zip='.format(base_url, guid)
-    path = os.path.join(directory,guid)
-    os.mkdir(path)
-    path = os.path.join(path,'files')
-    os.mkdir(path)
+    try:
+        os.mkdir(path)
+    except FileExistsError:
+        pass
+
+    path = os.path.join(path, 'files')
+
+    try:
+        os.mkdir(path)
+    except FileExistsError:
+        pass
+
     if token:
         auth_header = {'Authorization': 'Bearer {}'.format(token)}
     else:
@@ -61,10 +70,10 @@ def consume_files(guid, token, directory, base_url=BASE_URL):
             raise requests.exceptions.HTTPError(
                 'Status code {}. {}'.format(status_code, content))
     except requests.exceptions.RequestException as e:
-        logging.log(logging.ERROR,'HTTP Request failed: {}'.format(e))
+        logging.log(logging.ERROR, 'HTTP Request failed: {}'.format(e))
         raise
 
-    zipfile_location = os.path.join(path, (guid+'.zip'))
+    zipfile_location = os.path.join(path, f'{guid}.zip')
     with open(zipfile_location, 'wb') as file:
         file.write(response.content)
 
@@ -74,11 +83,8 @@ def consume_files(guid, token, directory, base_url=BASE_URL):
     os.remove(zipfile_location)
     print('File data successfully transferred!')
 
-def main(default_args=True):
-    if (default_args):
-        args = parser.parse_args(['--guid', 'default', '--directory', 'default'])
-    else:
-        args = parser.parse_args()
+
+def main():
     args = parser.parse_args()
     guid = args.guid
     directory = args.directory
@@ -91,12 +97,10 @@ def main(default_args=True):
         # Setting default to current directory
         directory = '.'
     if not url:
-        url = BASE_URL
+        url = settings.OSF_API_URL
 
     consume_files(guid, token, directory, url)
 
 
-
 if __name__ == '__main__':
-
-    main(default_args=False)
+    main()

@@ -4,6 +4,7 @@ import json
 import logging
 import time
 import requests
+import settings
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -33,9 +34,6 @@ parser.add_argument(
 )
 
 
-BASE_URL = 'https://api.osf.io/'
-LOGS_URL = 'v2/registrations/{}/logs/?page[size]={}'
-
 def json_with_pagination(path, guid, page, url, token):
     # Get JSON of registration logs
     response = make_json_api_request(url, token)
@@ -48,9 +46,9 @@ def json_with_pagination(path, guid, page, url, token):
         json.dump(json_data, file)
     return response
 
-def make_json_api_request(url,token):
 
-    auth_header = { 'authorizataion' : 'Bearer ' + token}
+def make_json_api_request(url, token):
+    auth_header = {'Authorizataion': f'Bearer {token}'}
     keep_trying = True
     response = None
 
@@ -70,12 +68,13 @@ def make_json_api_request(url,token):
                 raise requests.exceptions.HTTPError(
                     'Status code {}. {}'.format(status_code, content))
         except requests.exceptions.RequestException as e:
-            logging.log(logging.ERROR,'HTTP Request failed: {}'.format(e))
+            logging.log(logging.ERROR, 'HTTP Request failed: {}'.format(e))
             raise
     try:
         return response.json()
     except json.decoder.JSONDecodeError:
         return None
+
 
 def main():
     # Arg Parsing
@@ -98,18 +97,18 @@ def main():
 
     create_logs(guid, directory, pagesize, bearer_token)
 
+
 def create_logs(guid, directory, pagesize, bearer_token, base_url=None, logs_url=None):
     if not base_url:
-        base_url = BASE_URL
+        base_url = settings.OSF_API_URL
     if not logs_url:
-        logs_url = LOGS_URL
-
+        logs_url = settings.OSF_LOGS_URL
 
     # Creating directories
-    path = os.path.join(directory,guid)
+    path = os.path.join(directory, guid)
     if not os.path.exists(path):
         os.mkdir(path)
-    path = os.path.join(path,'logs')
+    path = os.path.join(path, 'logs')
     try:
         os.mkdir(path)
     except FileExistsError:
@@ -129,7 +128,5 @@ def create_logs(guid, directory, pagesize, bearer_token, base_url=None, logs_url
     print('Log data successfully transferred!')
 
 
-
 if __name__ == '__main__':
-
     main()
