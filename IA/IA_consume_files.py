@@ -2,7 +2,6 @@ import requests
 import os
 import argparse
 import logging
-import time
 import settings
 from zipfile import ZipFile
 
@@ -77,7 +76,6 @@ def main():
     guid = args.guid
     directory = args.directory
     token = args.token
-    url = args.url
 
     if not guid:
         raise ValueError('Project GUID must be specified! Use -g')

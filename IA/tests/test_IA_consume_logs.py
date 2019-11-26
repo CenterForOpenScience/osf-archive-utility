@@ -37,9 +37,9 @@ class TestIALogs(unittest.TestCase):
         )
 
         with mock.patch('builtins.open', mock.mock_open()) as m:
-            create_logs('njs82', '.', 100, 'asdfasdfasdgfasg', settings.OSF_API_URL)
-            m.assert_called_with('./njs82/logs/njs82-1.json', 'w')
-            mock_mkdir.assert_called_with('./njs82/logs')
+            create_logs('njs82', 'tests', 100, 'asdfasdfasdgfasg', settings.OSF_API_URL)
+            m.assert_called_with(os.path.join(HERE, 'njs82/logs/njs82-1.json'), 'w')
+            mock_mkdir.assert_called_with(os.path.join(HERE, 'njs82/logs'))
 
         with open(os.path.join(HERE, 'fixtures/njs82.json')) as json_file:
             source_json = json.loads(json_file.read())
@@ -69,9 +69,9 @@ class TestIALogs(unittest.TestCase):
         )
 
         with mock.patch('builtins.open', mock.mock_open()) as m:
-            create_logs('8jpzs', '.', 3, 'asdfasdfasdgfasg', settings.OSF_API_URL)
-            m.assert_called_with('./8jpzs/logs/8jpzs-2.json', 'w')
-            mock_mkdir.assert_called_with('./8jpzs/logs')
+            create_logs('8jpzs', 'tests', 3, 'asdfasdfasdgfasg', settings.OSF_API_URL)
+            m.assert_called_with(os.path.join(HERE, '8jpzs/logs/8jpzs-2.json'), 'w')
+            mock_mkdir.assert_called_with(os.path.join(HERE, '8jpzs/logs'))
 
         with open(os.path.join(HERE, 'fixtures/8jpzs-1.json')) as json_file:
             source_json_1 = json.loads(json_file.read())
