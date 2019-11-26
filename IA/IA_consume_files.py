@@ -74,5 +74,14 @@ if __name__ == '__main__':
     guid = args.guid
     directory = args.directory
     token = args.token
+<<<<<<< HEAD
+=======
+
+    if not guid:
+        raise ValueError('Project GUID must be specified! Use -g')
+    if not directory:
+        # Setting default to current directory
+        directory = '.'
+>>>>>>> Fixing all the test
 
     consume_files(guid, token, directory)
