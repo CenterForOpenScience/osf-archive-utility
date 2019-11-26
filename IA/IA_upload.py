@@ -84,7 +84,6 @@ async def chunked_upload(bucket_name: str, filename: str, file_content: bytes):
     await asyncio.gather(*tasks)
 
 
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument(
