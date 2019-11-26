@@ -83,6 +83,14 @@ async def chunked_upload(bucket_name: str, filename: str, file_content: bytes):
 
     await asyncio.gather(*tasks)
 
+def run_IA_upload(bucket, source):
+    try:
+        asyncio.run(gather_and_upload(bucket, source))
+    except Exception:
+        # There is already an event loop running. Ooops!
+        loop = asyncio.get_event_loop()
+        loop.create_task(gather_and_upload(bucket, source))
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

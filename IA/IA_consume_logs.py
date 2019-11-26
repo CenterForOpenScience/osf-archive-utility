@@ -9,6 +9,8 @@ import settings
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
+HERE = os.path.dirname(os.path.abspath(__file__))
+
 parser = argparse.ArgumentParser()
 parser.add_argument(
     '-g',
@@ -105,7 +107,7 @@ def create_logs(guid, directory, pagesize, bearer_token, base_url=None, logs_url
         logs_url = settings.OSF_LOGS_URL
 
     # Creating directories
-    path = os.path.join(directory, guid)
+    path = os.path.join(HERE, directory, guid)
     if not os.path.exists(path):
         os.mkdir(path)
     path = os.path.join(path, 'logs')

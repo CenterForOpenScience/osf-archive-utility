@@ -62,6 +62,14 @@ async def main(guid):
 
     await asyncio.gather(*write_tasks)
 
+def run_wiki_dump(guid):
+    try:
+        asyncio.run(main(guid))
+    except Exception:
+        # There is already an event loop running. Ooops!
+        loop = asyncio.get_event_loop()
+        loop.create_task(main(guid))
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument(

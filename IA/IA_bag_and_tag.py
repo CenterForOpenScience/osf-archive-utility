@@ -24,7 +24,7 @@ def get_datacite_metadata(doi):
 
 
 def bag_and_tag(xml_metadata, destination):
-    with open(os.path.join(HERE, destination, 'datacite.xml'), 'w') as fp:
+    with open(os.path.join(HERE, destination, 'datacite.xml'), 'w+') as fp:
         fp.write(xml_metadata)
 
     path = os.path.join(HERE, destination)
