@@ -27,11 +27,11 @@ class TestIAFiles(unittest.TestCase):
             )
 
         with mock.patch('builtins.open', mock.mock_open()) as m:
-            consume_files('sgg32', 'asdfasdfasdgfasg', '.')
-            mock_mkdir.assert_called_with('./sgg32/files')
-            m.assert_called_with('./sgg32/files/sgg32.zip', 'wb')
-            mock_zipfile.assert_called_with('./sgg32/files/sgg32.zip', 'r')
-            mock_rm.assert_called_with('./sgg32/files/sgg32.zip')
+            consume_files('sgg32', 'asdfasdfasdgfasg', 'tests/test_folder')
+            mock_mkdir.assert_called_with(os.path.join(HERE, 'test_folder/sgg32', 'files'))
+            m.assert_called_with(os.path.join(HERE, 'test_folder/sgg32/files/sgg32.zip'), 'wb')
+            mock_zipfile.assert_called_with(os.path.join(HERE, 'test_folder/sgg32/files/sgg32.zip'), 'r')
+            mock_rm.assert_called_with(os.path.join(HERE, 'test_folder/sgg32/files/sgg32.zip'))
 
     @responses.activate
     @mock.patch('IA.IA_consume_files.os.mkdir')
@@ -50,8 +50,8 @@ class TestIAFiles(unittest.TestCase):
             )
 
         with mock.patch('builtins.open', mock.mock_open()) as m:
-            consume_files('jj81a', None, '.')
-            mock_mkdir.assert_called_with('./jj81a/files')
-            m.assert_called_with('./jj81a/files/jj81a.zip', 'wb')
-            mock_zipfile.assert_called_with('./jj81a/files/jj81a.zip', 'r')
-            mock_rm.assert_called_with('./jj81a/files/jj81a.zip')
+            consume_files('jj81a', None, 'tests/test_folder')
+            mock_mkdir.assert_called_with(os.path.join(HERE, 'test_folder/jj81a/files'))
+            m.assert_called_with(os.path.join(HERE, 'test_folder/jj81a/files/jj81a.zip'), 'wb')
+            mock_zipfile.assert_called_with(os.path.join(HERE, 'test_folder/jj81a/files/jj81a.zip'), 'r')
+            mock_rm.assert_called_with(os.path.join(HERE, 'test_folder/jj81a/files/jj81a.zip'))

@@ -20,4 +20,3 @@ OSF_API_URL = 'http://localhost:8000/'
 OSF_FILES_URL = 'http://localhost:8000/'
 OSF_LOGS_URL = 'v2/registrations/{}/logs/?page[size]={}'
 IA_URL = 'http://s3.us.archive.org'
-
