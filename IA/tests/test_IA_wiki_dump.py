@@ -40,21 +40,21 @@ class TestWikiDumper(unittest.TestCase):
         responses.add(
             responses.Response(
                 responses.GET,
-                'https://localhost:8000/v2/wikis/dtns3/content/',
+                'http://localhost:8000/v2/wikis/dtns3/content/',
                 body=b'dtns3 data',
             ),
         )
         responses.add(
             responses.Response(
                 responses.GET,
-                'https://localhost:8000/v2/wikis/md549/content/',
+                'http://localhost:8000/v2/wikis/md549/content/',
                 body=b'md549 data',
             ),
         )
         responses.add(
             responses.Response(
                 responses.GET,
-                'https://localhost:8000/v2/wikis/p8kxa/content/',
+                'http://localhost:8000/v2/wikis/p8kxa/content/',
                 body=b'p8kxa data',
             ),
         )
@@ -79,7 +79,11 @@ class TestWikiDumper(unittest.TestCase):
         responses.add(
             responses.Response(
                 responses.GET,
+<<<<<<< HEAD:IA/tests/test_IA_wiki_dump.py
                 'http://localhost:8000/v2/registrations/fxehm/wikis/',
+=======
+                'http://localhost:8000/v2/registrations/fxehm/wikis/?page=1',
+>>>>>>> Fixing even more tests:IA/tests/test_wiki_dump.py
                 status=429,
                 headers={'Retry-After': '1'},
             )
@@ -87,28 +91,32 @@ class TestWikiDumper(unittest.TestCase):
         responses.add(
             responses.Response(
                 responses.GET,
+<<<<<<< HEAD:IA/tests/test_IA_wiki_dump.py
                 'http://localhost:8000/v2/registrations/fxehm/wikis/',
+=======
+                'http://localhost:8000/v2/registrations/fxehm/wikis/?page=1',
+>>>>>>> Fixing even more tests:IA/tests/test_wiki_dump.py
                 json=wiki_metadata(),
             )
         )
         responses.add(
             responses.Response(
                 responses.GET,
-                'https://localhost:8000/v2/wikis/dtns3/content/',
+                'http://localhost:8000/v2/wikis/dtns3/content/',
                 body=b'dtns3 data',
             ),
         )
         responses.add(
             responses.Response(
                 responses.GET,
-                'https://localhost:8000/v2/wikis/md549/content/',
+                'http://localhost:8000/v2/wikis/md549/content/',
                 body=b'md549 data',
             ),
         )
         responses.add(
             responses.Response(
                 responses.GET,
-                'https://localhost:8000/v2/wikis/p8kxa/content/',
+                'http://localhost:8000/v2/wikis/p8kxa/content/',
                 body=b'p8kxa data',
             ),
         )
@@ -134,7 +142,11 @@ class TestWikiDumper(unittest.TestCase):
         responses.add(
             responses.Response(
                 responses.GET,
+<<<<<<< HEAD:IA/tests/test_IA_wiki_dump.py
                 'http://localhost:8000/v2/registrations/fxehm/wikis/',
+=======
+                'http://localhost:8000/v2/registrations/fxehm/wikis/?page=1',
+>>>>>>> Fixing even more tests:IA/tests/test_wiki_dump.py
                 json=page1,
                 match_querystring=True,
             )
@@ -153,7 +165,7 @@ class TestWikiDumper(unittest.TestCase):
             responses.add(
                 responses.Response(
                     responses.GET,
-                    f'https://localhost:8000/v2/wikis{wiki["attributes"]["path"]}/content/',
+                    f'http://localhost:8000/v2/wikis{wiki["attributes"]["path"]}/content/',
                     body=f'{wiki["attributes"]["path"]} data',
                 ),
             )
