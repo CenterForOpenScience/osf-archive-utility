@@ -9,7 +9,7 @@ DATACITE_PREFIX = '10.70102'  # Datacite's test DOI prefix -- update in producti
 
 CHUNK_SIZE = 1000
 PAGE_SIZE = 100
-OSF_API_URI = 'https://api.staging.osf.io/'
+OSF_API_URI = 'http://localhost:8000/'
 OSF_COLLECTION_NAME = 'cos-dev-sandbox'
 OSF_BEARER_TOKEN = ''
 

@@ -33,28 +33,28 @@ class TestWikiDumper(unittest.TestCase):
         responses.add(
             responses.Response(
                 responses.GET,
-                'https://localhost:8000/v2/registrations/fxehm/wikis/?page=1',
+                'http://localhost:8000/v2/registrations/fxehm/wikis/?page=1',
                 json=wiki_metadata(),
             )
         )
         responses.add(
             responses.Response(
                 responses.GET,
-                'https://localhost:8000/v2/wikis/dtns3/content/',
+                'http://localhost:8000/v2/wikis/dtns3/content/',
                 body=b'dtns3 data',
             ),
         )
         responses.add(
             responses.Response(
                 responses.GET,
-                'https://localhost:8000/v2/wikis/md549/content/',
+                'http://localhost:8000/v2/wikis/md549/content/',
                 body=b'md549 data',
             ),
         )
         responses.add(
             responses.Response(
                 responses.GET,
-                'https://localhost:8000/v2/wikis/p8kxa/content/',
+                'http://localhost:8000/v2/wikis/p8kxa/content/',
                 body=b'p8kxa data',
             ),
         )
@@ -79,7 +79,7 @@ class TestWikiDumper(unittest.TestCase):
         responses.add(
             responses.Response(
                 responses.GET,
-                'https://localhost:8000/v2/registrations/fxehm/wikis/?page=1',
+                'http://localhost:8000/v2/registrations/fxehm/wikis/?page=1',
                 status=429,
                 headers={'Retry-After': '1'},
             )
@@ -87,28 +87,28 @@ class TestWikiDumper(unittest.TestCase):
         responses.add(
             responses.Response(
                 responses.GET,
-                'https://localhost:8000/v2/registrations/fxehm/wikis/?page=1',
+                'http://localhost:8000/v2/registrations/fxehm/wikis/?page=1',
                 json=wiki_metadata(),
             )
         )
         responses.add(
             responses.Response(
                 responses.GET,
-                'https://localhost:8000/v2/wikis/dtns3/content/',
+                'http://localhost:8000/v2/wikis/dtns3/content/',
                 body=b'dtns3 data',
             ),
         )
         responses.add(
             responses.Response(
                 responses.GET,
-                'https://localhost:8000/v2/wikis/md549/content/',
+                'http://localhost:8000/v2/wikis/md549/content/',
                 body=b'md549 data',
             ),
         )
         responses.add(
             responses.Response(
                 responses.GET,
-                'https://localhost:8000/v2/wikis/p8kxa/content/',
+                'http://localhost:8000/v2/wikis/p8kxa/content/',
                 body=b'p8kxa data',
             ),
         )
@@ -135,14 +135,14 @@ class TestWikiDumper(unittest.TestCase):
         responses.add(
             responses.Response(
                 responses.GET,
-                'https://localhost:8000/v2/registrations/fxehm/wikis/?page=1',
+                'http://localhost:8000/v2/registrations/fxehm/wikis/?page=1',
                 json=page1,
             )
         )
         responses.add(
             responses.Response(
                 responses.GET,
-                'https://localhost:8000/v2/registrations/fxehm/wikis/?page=2',
+                'http://localhost:8000/v2/registrations/fxehm/wikis/?page=2',
                 json=page2,
             )
         )
@@ -152,7 +152,7 @@ class TestWikiDumper(unittest.TestCase):
             responses.add(
                 responses.Response(
                     responses.GET,
-                    f'https://localhost:8000/v2/wikis{wiki["attributes"]["path"]}/content/',
+                    f'http://localhost:8000/v2/wikis{wiki["attributes"]["path"]}/content/',
                     body=f'{wiki["attributes"]["path"]} data',
                 ),
             )
