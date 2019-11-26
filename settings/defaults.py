@@ -16,8 +16,8 @@ OSF_BEARER_TOKEN = ''
 IA_ACCESS_KEY = ''
 IA_SECRET_KEY = ''
 
-OSF_API_URL = 'https://api.staging.osf.io/'
-OSF_FILES_URL = 'https://files.us.staging.osf.io/'
+OSF_API_URL = 'http://localhost:8000/'
+OSF_FILES_URL = 'http://localhost:8000/'
 OSF_LOGS_URL = 'v2/registrations/{}/logs/?page[size]={}'
 IA_URL = 'http://s3.us.archive.org'
 
