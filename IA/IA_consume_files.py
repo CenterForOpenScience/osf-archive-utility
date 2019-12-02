@@ -56,8 +56,8 @@ def consume_files(guid, token, directory):
     while keep_trying:
         keep_trying = False
         try:
-            response = get_with_retry(zip_url.format(guid),
-                    retry_on=(429,), headers=auth_header)
+            response = get_with_retry(
+                zip_url.format(guid), retry_on=(429,), headers=auth_header)
             if response.status_code >= 400:
                 status_code = response.status_code
                 content = getattr(response, 'content', None)
