@@ -1,6 +1,7 @@
 import requests
 import os
 import argparse
+import time
 import logging
 import settings
 from zipfile import ZipFile
@@ -62,7 +63,7 @@ def consume_files(guid, token, directory):
                 wait_time = response_headers['Retry-After']
                 logging.log(logging.INFO, 'Throttled: retrying in {wait_time}s')
                 time.sleep(int(wait_time))
-            if response.status_code >= 400:
+            elif response.status_code >= 400:
                 status_code = response.status_code
                 content = getattr(response, 'content', None)
                 raise requests.exceptions.HTTPError(
