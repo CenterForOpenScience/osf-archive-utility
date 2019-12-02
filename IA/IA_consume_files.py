@@ -49,16 +49,27 @@ def consume_files(guid, token, directory):
     else:
         auth_header = {}
 
-    try:
-        response = requests.get(zip_url.format(guid), headers=auth_header)
-        if response.status_code >= 400:
-            status_code = response.status_code
-            content = getattr(response, 'content', None)
-            raise requests.exceptions.HTTPError(
-                'Status code {}. {}'.format(status_code, content))
-    except requests.exceptions.RequestException as e:
-        logging.log(logging.ERROR, 'HTTP Request failed: {}'.format(e))
-        raise
+    keep_trying = True
+    response = None
+
+    while keep_trying:
+        keep_trying = False
+        try:
+            response = requests.get(zip_url.format(guid), headers=auth_header)
+            if response.status_code == 429:
+                keep_trying = True
+                response_headers = response.headers
+                wait_time = response_headers['Retry-After']
+                logging.log(logging.INFO, 'Throttled: retrying in {wait_time}s')
+                time.sleep(int(wait_time))
+            if response.status_code >= 400:
+                status_code = response.status_code
+                content = getattr(response, 'content', None)
+                raise requests.exceptions.HTTPError(
+                    'Status code {}. {}'.format(status_code, content))
+        except requests.exceptions.RequestException as e:
+            logging.log(logging.ERROR, 'HTTP Request failed: {}'.format(e))
+            raise
 
     zipfile_location = os.path.join(path, f'{guid}.zip')
     with open(zipfile_location, 'wb') as file:

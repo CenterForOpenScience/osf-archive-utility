@@ -19,7 +19,7 @@ class TestIAFiles(unittest.TestCase):
             responses.add(
                 responses.Response(
                     responses.GET,
-                    f'{settings.OSF_API_URL}v1/resources/sgg32/providers/osfstorage/?zip=',
+                    f'{settings.OSF_FILES_URL}v1/resources/sgg32/providers/osfstorage/?zip=',
                     body=zipfile.read(),
                     status=200,
                     stream=True
@@ -43,7 +43,7 @@ class TestIAFiles(unittest.TestCase):
             responses.add(
                 responses.Response(
                     responses.GET,
-                    f'{settings.OSF_API_URL}v1/resources/jj81a/providers/osfstorage/?zip=',
+                    f'{settings.OSF_FILES_URL}v1/resources/jj81a/providers/osfstorage/?zip=',
                     body=zipfile.read(),
                     status=200,
                     stream=True

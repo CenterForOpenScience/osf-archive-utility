@@ -17,6 +17,6 @@ IA_ACCESS_KEY = ''
 IA_SECRET_KEY = ''
 
 OSF_API_URL = 'https://localhost:8000/'
-OSF_FILES_URL = 'https://localhost:8000/'
+OSF_FILES_URL = 'https://localhost:7777/'
 OSF_LOGS_URL = 'v2/registrations/{}/logs/?page[size]={}'
 IA_URL = 'http://s3.us.archive.org'
