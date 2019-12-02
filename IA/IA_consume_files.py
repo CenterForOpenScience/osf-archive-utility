@@ -4,6 +4,7 @@ import argparse
 import time
 import logging
 import settings
+from IA.utils import get_with_retry
 from zipfile import ZipFile
 
 logger = logging.getLogger(__name__)
@@ -56,14 +57,9 @@ def consume_files(guid, token, directory):
     while keep_trying:
         keep_trying = False
         try:
-            response = requests.get(zip_url.format(guid), headers=auth_header)
-            if response.status_code == 429:
-                keep_trying = True
-                response_headers = response.headers
-                wait_time = response_headers['Retry-After']
-                logging.log(logging.INFO, 'Throttled: retrying in {wait_time}s')
-                time.sleep(int(wait_time))
-            elif response.status_code >= 400:
+            response = get_with_retry(zip_url.format(guid), 
+                retry_on=(429,), headers=auth_header)
+            if response.status_code >= 400:
                 status_code = response.status_code
                 content = getattr(response, 'content', None)
                 raise requests.exceptions.HTTPError(

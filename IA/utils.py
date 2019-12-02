@@ -4,8 +4,9 @@ from ratelimit.exception import RateLimitException
 
 
 @sleep_and_retry
-def get_with_retry(url, retry_on=list(), sleep_period=None) -> requests.Response:
-    resp = requests.get(url)
+def get_with_retry(url, retry_on=list(), sleep_period=None, headers=None) -> requests.Response:
+
+    resp = requests.get(url, headers=headers)
     if resp.status_code in retry_on:
         raise RateLimitException(
             message='Too many requests, sleeping.',
