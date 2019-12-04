@@ -13,7 +13,8 @@ from settings import (
     OSF_COLLECTION_NAME,
     IA_ACCESS_KEY,
     IA_SECRET_KEY,
-    IA_URL
+    IA_URL,
+    IA_CHUNKED_URL,
 )
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -33,16 +34,18 @@ async def gather_and_upload(bucket_name: str, parent: str):
 
     tasks = []
 
-    for root, dirs, files in os.walk(parent):
+    directory_path = os.path.join(HERE, parent)
+    for root, dirs, files in os.walk(directory_path):
         for file in files:
             path = os.path.join(root, file)
             with open(path, 'rb') as fp:
                 data = fp.read()
                 size = len(data)
+                url_path = path.split(parent)[1]
                 if size > CHUNK_SIZE:
-                    tasks.append(chunked_upload(bucket_name, path, data))
+                    tasks.append(chunked_upload(bucket_name, url_path, data))
                 else:
-                    tasks.append(upload(bucket_name, path, data))
+                    tasks.append(upload(bucket_name, url_path, data))
 
     await asyncio.gather(*tasks)
 

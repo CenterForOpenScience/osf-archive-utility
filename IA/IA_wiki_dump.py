@@ -12,12 +12,12 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 async def write_wiki_content(page):
     resp = get_with_retry(page['links']['download'], retry_on=(429,))
-
-    with open(os.path.join(HERE, f'/{page["attributes"]["name"]}.md'), 'wb') as fp:
+    file_path = os.path.join(HERE, destination, guid, f'{page["attributes"]["name"]}.md')
+    with open(file_path, 'wb') as fp:
         fp.write(resp.content)
 
 
-async def main(guid):
+async def main(guid, destination=''):
     """
     Usually asynchronous requests/writes are reserved for times when it's truely necessary, but
     given the fact that we have like 4 days left in the sprint and this going to be the first
@@ -34,7 +34,7 @@ async def main(guid):
     pages_as_list = await get_paginated_data(url)
     write_tasks = []
     for page in pages_as_list:
-        write_tasks.append(write_wiki_content(page))
+        write_tasks.append(write_wiki_content(page, destination, guid))
 
     await asyncio.gather(*write_tasks)
 
