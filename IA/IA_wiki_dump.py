@@ -10,7 +10,7 @@ from IA.utils import (
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 
-async def write_wiki_content(page):
+async def write_wiki_content(page, destination, guid):
     resp = get_with_retry(page['links']['download'], retry_on=(429,))
     file_path = os.path.join(HERE, destination, guid, f'{page["attributes"]["name"]}.md')
     with open(file_path, 'wb') as fp:

@@ -14,7 +14,6 @@ from settings import (
     IA_ACCESS_KEY,
     IA_SECRET_KEY,
     IA_URL,
-    IA_CHUNKED_URL,
 )
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -41,7 +40,7 @@ async def gather_and_upload(bucket_name: str, parent: str):
             with open(path, 'rb') as fp:
                 data = fp.read()
                 size = len(data)
-                url_path = path.split(parent)[1]
+                url_path = path.split(parent+'/')[1]
                 if size > CHUNK_SIZE:
                     tasks.append(chunked_upload(bucket_name, url_path, data))
                 else:
@@ -55,7 +54,7 @@ async def upload(bucket_name: str, filename: str, file_content: bytes):
         'authorization': 'LOW {}:{}'.format(IA_ACCESS_KEY, IA_SECRET_KEY),
         'x-amz-auto-make-bucket': '1',
         'Content-Type': 'application/octet-stream',
-        'x-archive-meta01-collection': OSF_COLLECTION_NAME,
+        #'x-archive-meta01-collection': OSF_COLLECTION_NAME,
     }
     url = f'{IA_URL}/{bucket_name}/{filename}'
     resp = put_with_retry(f'http://{url}', headers=headers, data=file_content, retry_on=(429, 503))

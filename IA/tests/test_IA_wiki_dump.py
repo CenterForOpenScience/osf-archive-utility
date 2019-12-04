@@ -144,7 +144,7 @@ class TestWikiDumper(unittest.TestCase):
         responses.add(
             responses.Response(
                 responses.GET,
-                'https://localhost:8000/v2/registrations/fxehm/wikis/?page=2',
+                'http://localhost:8000/v2/registrations/fxehm/wikis/?page=2',
                 json=page2,
                 match_querystring=True,
             )
