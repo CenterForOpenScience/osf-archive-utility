@@ -12,6 +12,9 @@ PAGE_SIZE = 100
 OSF_COLLECTION_NAME = 'cos-dev-sandbox'
 OSF_BEARER_TOKEN = ''
 
+IA_ACCESS_KEY = 'change to valid token'
+IA_SECRET_KEY = 'change to valid token'
+
 OSF_API_URL = 'http://localhost:8000/'
 OSF_FILES_URL = 'http://localhost:7777/'
 OSF_LOGS_URL = 'v2/registrations/{}/logs/?page[size]={}'
