@@ -56,4 +56,4 @@ class TestIAFiles(unittest.TestCase):
             zip_path = os.path.join(HERE, 'test_folder/jj81a/files/jj81a.zip')
             m.assert_called_with(zip_path, 'wb')
             mock_zipfile.assert_called_with(zip_path, 'r')
-            m.assert_called_with(os.path.join(HERE, 'test_folder/jj81a/files/jj81a.zip'), 'wb')
+            mock_rm.assert_called_with(os.path.join(HERE, 'test_folder/jj81a/files/jj81a.zip'))
