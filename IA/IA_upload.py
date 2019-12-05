@@ -54,7 +54,7 @@ async def upload(bucket_name: str, filename: str, file_content: bytes):
         'authorization': 'LOW {}:{}'.format(IA_ACCESS_KEY, IA_SECRET_KEY),
         'x-amz-auto-make-bucket': '1',
         'Content-Type': 'application/octet-stream',
-        #'x-archive-meta01-collection': OSF_COLLECTION_NAME,
+        'x-archive-meta01-collection': OSF_COLLECTION_NAME,
     }
     url = f'{IA_URL}/{bucket_name}/{filename}'
     resp = put_with_retry(f'http://{url}', headers=headers, data=file_content, retry_on=(429, 503))
