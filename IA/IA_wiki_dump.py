@@ -12,7 +12,14 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 async def write_wiki_content(page, destination, guid):
     resp = get_with_retry(page['links']['download'], retry_on=(429,))
-    file_path = os.path.join(HERE, destination, guid, f'{page["attributes"]["name"]}.md')
+    file_destination_path = os.path.join(HERE, destination, guid, 'wikis')
+    
+    try:
+        os.mkdir(file_destination_path)
+    except FileExistsError:
+        pass
+    
+    file_path = os.path.join(file_destination_path, f'{page["attributes"]["name"]}.md')
     with open(file_path, 'wb') as fp:
         fp.write(resp.content)
 
