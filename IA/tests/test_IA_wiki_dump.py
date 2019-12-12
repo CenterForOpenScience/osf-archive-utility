@@ -35,7 +35,7 @@ class TestWikiDumper(unittest.TestCase):
                 responses.GET,
                 'http://localhost:8000/v2/registrations/fxehm/wikis/',
                 json=wiki_metadata(),
-            )
+            ),
         )
         responses.add(
             responses.Response(
@@ -61,18 +61,18 @@ class TestWikiDumper(unittest.TestCase):
 
         with mock.patch('builtins.open', mock.mock_open()) as m:
             asyncio.run(main('fxehm', ''))
-            mock_path = os.path.abspath(os.path.join(HERE, '..', 'fxehm'))
+            mock_path = os.path.abspath(os.path.join(HERE, '..', 'fxehm', 'wikis'))
             assert m.call_args_list == [
                 call(os.path.join(mock_path, 'home.md'), 'wb'),
                 call(os.path.join(mock_path, 'test1Ω≈ç√∫˜µ≤≥≥÷åß∂ƒ©˙∆∆˚¬…æ.md'), 'wb'),
-                call(os.path.join(mock_path, 'test2.md'), 'wb')
+                call(os.path.join(mock_path, 'test2.md'), 'wb'),
             ]
             handle = m()
 
             assert handle.write.call_args_list == [
                 call(b'dtns3 data'),
                 call(b'md549 data'),
-                call(b'p8kxa data')
+                call(b'p8kxa data'),
             ]
 
     @responses.activate
@@ -83,14 +83,14 @@ class TestWikiDumper(unittest.TestCase):
                 'http://localhost:8000/v2/registrations/fxehm/wikis/',
                 status=429,
                 headers={'Retry-After': '1'},
-            )
+            ),
         )
         responses.add(
             responses.Response(
                 responses.GET,
                 'http://localhost:8000/v2/registrations/fxehm/wikis/',
                 json=wiki_metadata(),
-            )
+            ),
         )
         responses.add(
             responses.Response(
@@ -116,18 +116,18 @@ class TestWikiDumper(unittest.TestCase):
 
         with mock.patch('builtins.open', mock.mock_open()) as m:
             asyncio.run(main('fxehm', ''))
-            mock_path = os.path.abspath(os.path.join(HERE, '..', 'fxehm'))
+            mock_path = os.path.abspath(os.path.join(HERE, '..', 'fxehm', 'wikis'))
             assert m.call_args_list == [
                 call(os.path.join(mock_path, 'home.md'), 'wb'),
                 call(os.path.join(mock_path, 'test1Ω≈ç√∫˜µ≤≥≥÷åß∂ƒ©˙∆∆˚¬…æ.md'), 'wb'),
-                call(os.path.join(mock_path, 'test2.md'), 'wb')
+                call(os.path.join(mock_path, 'test2.md'), 'wb'),
             ]
             handle = m()
 
             assert handle.write.call_args_list == [
                 call(b'dtns3 data'),
                 call(b'md549 data'),
-                call(b'p8kxa data')
+                call(b'p8kxa data'),
             ]
 
     @responses.activate
@@ -139,7 +139,7 @@ class TestWikiDumper(unittest.TestCase):
                 'http://localhost:8000/v2/registrations/fxehm/wikis/',
                 json=page1,
                 match_querystring=True,
-            )
+            ),
         )
         responses.add(
             responses.Response(
@@ -147,7 +147,7 @@ class TestWikiDumper(unittest.TestCase):
                 'http://localhost:8000/v2/registrations/fxehm/wikis/?page=2',
                 json=page2,
                 match_querystring=True,
-            )
+            ),
         )
 
         data = page1['data'] + page2['data']
@@ -162,18 +162,26 @@ class TestWikiDumper(unittest.TestCase):
 
         with mock.patch('builtins.open', mock.mock_open()) as m:
             asyncio.run(main('fxehm', ''))
-            mock_path = os.path.abspath(os.path.join(HERE, '..', 'fxehm'))
+            mock_path = os.path.abspath(os.path.join(HERE, '..', 'fxehm', 'wikis'))
             assert_equal(
                 m.call_args_list,
-                [call(
-                    os.path.join(
-                        mock_path, f'{wiki["attributes"]["name"]}.md'), 'wb') for wiki in data]
+                [
+                    call(
+                        os.path.join(
+                            mock_path, f'{wiki["attributes"]["name"]}.md',
+                        ), 'wb',
+                    ) for wiki in data
+                ],
             )
 
             handle = m()
             assert_equal(
                 handle.write.call_args_list,
-                [call(
-                    os.path.join(
-                        mock_path, f'{wiki["attributes"]["path"]} data').encode()) for wiki in data]
+                [
+                    call(
+                        os.path.join(
+                            mock_path, f'{wiki["attributes"]["path"]} data',
+                        ).encode(),
+                    ) for wiki in data
+                ],
             )
