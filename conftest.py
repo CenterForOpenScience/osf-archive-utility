@@ -40,7 +40,7 @@ def mock_ia_client():
         mock_ia.return_value = mock_session
         mock_session.get_item.return_value = mock_ia_item
 
-        # ⬇️ just so we only pass one mock into the test, but can refference the item/session directly
+        # ⬇️ we only pass one mock into the test
         mock_ia.session = mock_session
         mock_ia.item = mock_ia_item
         yield mock_ia

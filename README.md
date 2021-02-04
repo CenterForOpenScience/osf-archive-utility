@@ -16,11 +16,17 @@ Install
 
 Simply install the package using python's package manager pip with bash:
  
- ``pip3 install osf_pigeon``
+```
+pip3 install osf_pigeon
+```
+
  
 To use for local development just remember to install the developer requirements using:
 
- ``pip3 install -r dev.txt``
+```
+pip3 install -r dev.txt
+```
+
 
 Use
 ============
@@ -32,9 +38,9 @@ Assuming the registration is fully public and the DOI has been minted properly a
 Run from package
 ============
 
-
 Simply import the module and enter a guid with credentials::
 
+```
  from osf_pigeon.pigeon import main
 
  main(
@@ -45,16 +51,36 @@ Simply import the module and enter a guid with credentials::
     ia_access_key='test_datacite_password',
     ia_secret_key='test_datacite_password',
  )
-
+```
 That's it!
+
+
+Sync Metadata without files
+============
+
+```
+ from osf_pigeon.pigeon import sync_metadata
+
+ sync_metadata(
+    'guid0',
+    ia_access_key='test_datacite_password',
+    ia_secret_key='test_datacite_password',
+    metadata={
+        'title': 'This is the title',
+        'anything': 'This is isn't validated'
+    }
+)
+```
+
+The IA bucket may take several minutes to reflect changes.
 
 Run as script
 ============
 
 To run as script just -m to execute the module:
-
+```
  python3 -m osf_pigeon -g u8p3q 
-
+```
 
 Running in development
 ========================
@@ -64,9 +90,10 @@ Tests
 ============
 
 Running tests are easy enough just::
-
+```
  pip3 install -r dev.txt
  python3 -m pytest . 
+```
 
 
 Linting
