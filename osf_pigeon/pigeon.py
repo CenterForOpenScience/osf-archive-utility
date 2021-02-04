@@ -163,17 +163,9 @@ def main(
         )
 
         zip_data = create_zip_data(temp_dir)
-
-        session = internetarchive.get_session(
-            config={
-                's3': {
-                    'access': ia_access_key,
-                    'secret': ia_secret_key
-                }
-            }
-        )
-        ia_item = session.get_item(guid)
         metadata = get_metadata(temp_dir, 'registration.json')
+
+        ia_item = get_ia_item(guid, ia_access_key, ia_secret_key)
 
         ia_item.upload(
             {'bag.zip': zip_data},
@@ -327,3 +319,20 @@ async def get_paginated_data(url, parse_json=None):
         return pages_as_list
     else:
         return data
+
+
+def get_ia_item(guid, ia_access_key, ia_secret_key):
+    session = internetarchive.get_session(
+        config={
+            's3': {
+                'access': ia_access_key,
+                'secret': ia_secret_key
+            }
+        }
+    )
+    return session.get_item(guid)
+
+
+def sync_metadata(guid, metadata, ia_access_key, ia_secret_key):
+    ia_item = get_ia_item(guid, ia_access_key, ia_secret_key)
+    modify_metadata_with_retry(ia_item, metadata)

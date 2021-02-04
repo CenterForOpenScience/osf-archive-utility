@@ -13,7 +13,8 @@ from osf_pigeon.pigeon import (
     create_zip_data,
     get_metadata,
     modify_metadata_with_retry,
-    get_contributors
+    get_contributors,
+    sync_metadata
 )
 import internetarchive
 import zipfile
@@ -278,6 +279,17 @@ class TestMetadata:
 
         assert len(mock_ia_item.mock_calls) == 1
         assert mock_ia_item.mock_calls[0][1][0] == metadata
+
+    def test_modify_metadata_only(self, mock_ia_client, guid):
+        metadata = {
+            'title': 'Test Component',
+            'description': 'Test Description',
+            'date': '2017-12-20',
+            'contributor': 'Center for Open Science',
+        }
+        sync_metadata(guid, metadata, 'notrealaccesskey', 'notrealsecretkey')
+        mock_ia_client.session.get_item.assert_called_with('guid0')
+        mock_ia_client.item.modify_metadata.assert_called_with(metadata)
 
     def test_modify_metadata_with_retry(self, temp_dir, test_node_json):
         metadata = {
