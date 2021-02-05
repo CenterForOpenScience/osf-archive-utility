@@ -87,6 +87,10 @@
                         "href": "http://localhost:8000/v2/providers/registrations/osf/",
                         "meta": {}
                     }
+                },
+                "data": {
+                    "id": "osf",
+                    "type": "registration-providers"
                 }
             },
             "forks": {

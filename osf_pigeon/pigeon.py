@@ -70,7 +70,8 @@ def create_zip_data(temp_dir):
 
 def get_metadata(temp_dir, filename):
     with open(os.path.join(temp_dir, 'data', filename), 'r') as f:
-        node_json = json.loads(f.read())['data']['attributes']
+        data = json.loads(f.read())['data']
+        node_json = data['attributes']
 
     date_string = node_json['date_created']
     date_string = date_string.partition('.')[0]
@@ -81,6 +82,7 @@ def get_metadata(temp_dir, filename):
         description=node_json['description'],
         date=date_time.strftime("%Y-%m-%d"),
         contributor='Center for Open Science',
+        provider_id=data['relationships']['provider']['data']['id']
     )
 
     article_doi = node_json['article_doi']
@@ -163,25 +165,9 @@ def main(
         )
 
         zip_data = create_zip_data(temp_dir)
-
-        session = internetarchive.get_session(
-            config={
-                's3': {
-                    'access': ia_access_key,
-                    'secret': ia_secret_key
-                }
-            }
-        )
-        ia_item = session.get_item(guid)
         metadata = get_metadata(temp_dir, 'registration.json')
 
-        ia_item.upload(
-            {'bag.zip': zip_data},
-            metadata=metadata,
-            headers={'x-archive-meta01-collection': settings.OSF_COLLECTION_NAME},
-            access_key=ia_access_key,
-            secret_key=ia_secret_key,
-        )
+        ia_item = upload(guid, zip_data, metadata, ia_access_key, ia_secret_key)
         modify_metadata_with_retry(ia_item, metadata)
 
         return ia_item.urls.details
@@ -327,3 +313,55 @@ async def get_paginated_data(url, parse_json=None):
         return pages_as_list
     else:
         return data
+
+
+def upload(guid, zip_data, metadata, ia_access_key, ia_secret_key):
+    session = internetarchive.get_session(
+        config={
+            's3': {
+                'access': ia_access_key,
+                'secret': ia_secret_key
+            }
+        }
+    )
+    ia_item = session.get_item(guid)
+
+    ia_item.upload(
+        {'bag.zip': zip_data},
+        metadata=metadata,
+        headers={
+            'x-archive-meta01-collection': metadata['provider_id']
+        },
+        access_key=ia_access_key,
+        secret_key=ia_secret_key,
+    )
+
+    return ia_item
+
+
+def create_subcollection(metadata, parent_collection, ia_access_key, ia_secret_key):
+    """
+
+    :param metadata: dict should attributes for the provider's sub-collection is being created
+    :param parent_collection: str the name of the  sub-collection's parent
+    :param ia_access_key: Internet Archive's access key
+    :param ia_secret_key: Internet Archive's secret key
+    :return:
+    """
+    session = internetarchive.get_session(
+        config={
+            's3': {
+                'access': ia_access_key,
+                'secret': ia_secret_key
+            }
+        }
+    )
+
+    collection = internetarchive.Item(session, metadata['id'])
+    collection.upload(
+        metadata={
+            'title':  metadata['title'],
+            'mediatype': 'collection',
+            'collection': parent_collection
+        }
+    )

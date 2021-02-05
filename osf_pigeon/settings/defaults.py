@@ -8,7 +8,8 @@ DATACITE_PREFIX = '10.17605'  # Datacite's prod DOI prefix
 DATACITE_URL = 'https://mds.datacite.org/'
 
 PAGE_SIZE = 100
-OSF_COLLECTION_NAME = 'cos-dev-sandbox'
+
+OSF_STAGING_COLLECTION_NAME = 'cos-dev-sandbox'
 OSF_BEARER_TOKEN = None
 
 IA_ACCESS_KEY = None

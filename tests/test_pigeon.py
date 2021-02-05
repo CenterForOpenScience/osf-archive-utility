@@ -13,7 +13,8 @@ from osf_pigeon.pigeon import (
     create_zip_data,
     get_metadata,
     modify_metadata_with_retry,
-    get_contributors
+    get_contributors,
+    upload
 )
 import internetarchive
 import zipfile
@@ -264,6 +265,7 @@ class TestMetadata:
             'description': 'Test Description',
             'date': '2017-12-20',
             'contributor': 'Center for Open Science',
+            'provider_id': 'osf',
         }
 
     def test_modify_metadata(self, temp_dir, test_node_json):
@@ -302,3 +304,77 @@ class TestMetadata:
 
         for call in mock_ia_item.mock_calls:
             assert call[1][0] == metadata
+
+
+class TestUpload:
+
+    @pytest.fixture
+    def guid(self):
+        return 'guid0'
+
+    @pytest.fixture
+    def zip_data(self):
+        return b'Clyde Simmons is underrated'
+
+    @pytest.fixture
+    def metadata(self):
+        return {
+            'title': 'DJax',
+            'description': 'Jason Peters',
+            'date': '2017-12-20',
+            'contributor': 'Center for Open Science',
+            'provider_id': 'osf',
+        }
+
+    @pytest.fixture
+    def temp_dir(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            yield temp_dir
+
+    def test_upload(self, mock_ia_client, mock_osf_api, guid, temp_dir, metadata):
+        upload(guid, temp_dir, metadata, ia_access_key='Buddy Ryan', ia_secret_key='Fletcher Cox')
+
+        mock_ia_client.session.get_item.assert_called_with('guid0')
+        mock_ia_client.item.upload.assert_called_with(
+            {'bag.zip': mock.ANY},  # tmp file is named randomly
+            metadata={
+                'title': 'DJax',
+                'description': 'Jason Peters',
+                'date': '2017-12-20',
+                'contributor': 'Center for Open Science',
+                'provider_id': 'osf',
+            },
+            headers={'x-archive-meta01-collection': 'osf'},
+            access_key='Buddy Ryan',
+            secret_key='Fletcher Cox'
+        )
+
+    def test_upload_with_different_provider(
+            self,
+            mock_ia_client,
+            mock_osf_api,
+            guid,
+            temp_dir,
+            metadata
+    ):
+        """
+        Different providers should get uploaded to different collections
+        """
+        metadata['provider_id'] = 'burds'
+
+        upload(guid, temp_dir, metadata, ia_access_key='Buddy Ryan', ia_secret_key='Fletcher Cox')
+
+        mock_ia_client.session.get_item.assert_called_with('guid0')
+        mock_ia_client.item.upload.assert_called_with(
+            {'bag.zip': mock.ANY},  # tmp file is named randomly
+            metadata={
+                'title': 'DJax',
+                'description': 'Jason Peters',
+                'date': '2017-12-20',
+                'contributor': 'Center for Open Science',
+                'provider_id': 'burds',
+            },
+            headers={'x-archive-meta01-collection': 'burds'},
+            access_key='Buddy Ryan',
+            secret_key='Fletcher Cox'
+        )
