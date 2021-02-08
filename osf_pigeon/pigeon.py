@@ -174,7 +174,8 @@ def main(
             access_key=ia_access_key,
             secret_key=ia_secret_key,
         )
-        modify_metadata_with_retry(ia_item, metadata)
+
+        sync_metadata(ia_item, metadata, ia_access_key, ia_secret_key)
 
         return ia_item.urls.details
 
@@ -335,4 +336,8 @@ def get_ia_item(guid, ia_access_key, ia_secret_key):
 
 def sync_metadata(guid, metadata, ia_access_key, ia_secret_key):
     ia_item = get_ia_item(guid, ia_access_key, ia_secret_key)
+
+    if metadata.get('moderation_state') == 'withdrawn':  # withdrawn == not searchable
+        metadata['noindex'] = True
+
     modify_metadata_with_retry(ia_item, metadata)
