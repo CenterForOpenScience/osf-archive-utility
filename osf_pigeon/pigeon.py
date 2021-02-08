@@ -175,7 +175,7 @@ def main(
             secret_key=ia_secret_key,
         )
 
-        sync_metadata(ia_item, metadata, ia_access_key, ia_secret_key)
+        sync_metadata(guid, metadata, ia_access_key, ia_secret_key)
 
         return ia_item.urls.details
 
