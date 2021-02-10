@@ -1,5 +1,5 @@
 bagit==1.7.0
 datacite==1.0.1
-git+git://github.com/johnetordoff/internetarchive.git
+internetarchive==1.9.9
 ratelimit==2.2.1
 requests==2.24.0
