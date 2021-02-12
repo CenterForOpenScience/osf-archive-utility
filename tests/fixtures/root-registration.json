@@ -1,0 +1,184 @@
+{
+    "data": {
+        "id": "pkdm6",
+        "type": "registrations",
+        "attributes": {
+            "title": "Root Registration with no children",
+            "description": "This is a fake registration to test how to structure our project.",
+            "category": "",
+            "custom_citation": null,
+            "date_created": "2021-02-08T23:09:41.578790Z",
+            "date_modified": "2021-02-08T23:04:06.599567Z",
+            "registration": true,
+            "preprint": false,
+            "fork": null,
+            "collection": null,
+            "tags": null,
+            "access_requests_enabled": null,
+            "node_license": null,
+            "analytics_key": "2e2e9b8872821ad1115140ed3e6811c6cf5ddcdc6372b3a06002097a62d40266142700bd79cfdc4192de0077e6633acb25a54128e2434449832945c2732ad72dfe4cdf2c135acf0247f683f2f752ce0a3372d8950db5a8b1566dfa31ebfc1e3640f8c3ded6df977989c1cfdc6ae0a4842c7503ba86c3960a119be401524e3955ac598b89984c3766c3d63a859cd0408b",
+            "template_from": null,
+            "current_user_can_comment": false,
+            "current_user_permissions": null,
+            "current_user_is_contributor": false,
+            "current_user_is_contributor_or_group_member": false,
+            "wiki_enabled": true,
+            "public": null,
+            "reviews_state": "withdrawn",
+            "article_doi": null,
+            "pending_embargo_approval": null,
+            "pending_embargo_termination_approval": null,
+            "embargoed": null,
+            "pending_registration_approval": null,
+            "archiving": null,
+            "pending_withdrawal": null,
+            "withdrawn": true,
+            "date_registered": "2021-02-08T23:09:41.562456Z",
+            "date_withdrawn": "2021-02-10T20:58:12.125007Z",
+            "embargo_end_date": null,
+            "withdrawal_justification": "This registration was just a test to aid in deciding how to structure a project and it's components.",
+            "registration_supplement": "OSF Preregistration",
+            "registered_meta": null,
+            "registration_responses": null
+        },
+        "relationships": {
+            "contributors": {
+                "links": {
+                    "related": {
+                        "href": "https://api.osf.io/v2/registrations/pkdm6/contributors/",
+                        "meta": {}
+                    }
+                }
+            },
+            "bibliographic_contributors": {
+                "links": {
+                    "related": {
+                        "href": "https://api.osf.io/v2/registrations/pkdm6/bibliographic_contributors/",
+                        "meta": {}
+                    }
+                }
+            },
+            "implicit_contributors": {
+                "links": {
+                    "related": {
+                        "href": "https://api.osf.io/v2/registrations/pkdm6/implicit_contributors/",
+                        "meta": {}
+                    }
+                }
+            },
+            "parent": {
+                "data": null
+            },
+            "identifiers": {
+                "links": {
+                    "related": {
+                        "href": "https://api.osf.io/v2/registrations/pkdm6/identifiers/",
+                        "meta": {}
+                    }
+                }
+            },
+            "affiliated_institutions": {
+                "links": {
+                    "related": {
+                        "href": "https://api.osf.io/v2/registrations/pkdm6/institutions/",
+                        "meta": {}
+                    },
+                    "self": {
+                        "href": "https://api.osf.io/v2/registrations/pkdm6/relationships/institutions/",
+                        "meta": {}
+                    }
+                }
+            },
+            "root": {
+                "links": {
+                    "related": {
+                        "href": "https://api.osf.io/v2/registrations/pkdm6/",
+                        "meta": {}
+                    }
+                },
+                "data": {
+                    "id": "pkdm6",
+                    "type": "registrations"
+                }
+            },
+            "preprints": {
+                "data": null
+            },
+            "storage": {
+                "links": {
+                    "related": {
+                        "href": "https://api.osf.io/v2/nodes/pkdm6/storage/",
+                        "meta": {}
+                    }
+                },
+                "data": {
+                    "id": "pkdm6",
+                    "type": "nodes"
+                }
+            },
+            "registered_from": {
+                "links": {
+                    "related": {
+                        "href": "https://api.osf.io/v2/nodes/9tjgf/",
+                        "meta": {}
+                    }
+                },
+                "data": {
+                    "id": "9tjgf",
+                    "type": "nodes"
+                }
+            },
+            "registration_schema": {
+                "links": {
+                    "related": {
+                        "href": "https://api.osf.io/v2/schemas/registrations/5e795fc0d2833800195735d0/",
+                        "meta": {}
+                    }
+                },
+                "data": {
+                    "id": "5e795fc0d2833800195735d0",
+                    "type": "registration-schemas"
+                }
+            },
+            "provider": {
+                "links": {
+                    "related": {
+                        "href": "https://api.osf.io/v2/providers/registrations/osf/",
+                        "meta": {}
+                    }
+                },
+                "data": {
+                    "id": "osf",
+                    "type": "registration-providers"
+                }
+            },
+            "review_actions": {
+                "links": {
+                    "related": {
+                        "href": "https://api.osf.io/v2/registrations/pkdm6/actions/",
+                        "meta": {}
+                    }
+                }
+            },
+            "subjects": {
+                "links": {
+                    "related": {
+                        "href": "https://api.osf.io/v2/registrations/pkdm6/subjects/",
+                        "meta": {}
+                    },
+                    "self": {
+                        "href": "https://api.osf.io/v2/registrations/pkdm6/relationships/subjects/",
+                        "meta": {}
+                    }
+                }
+            }
+        },
+        "links": {
+            "html": "https://osf.io/pkdm6/",
+            "self": "https://api.osf.io/v2/registrations/pkdm6/"
+        }
+    },
+    "meta": {
+        "version": "2.20"
+    }
+}

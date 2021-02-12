@@ -1,0 +1,506 @@
+{
+    "data": {
+        "id": "2ezyb",
+        "type": "registrations",
+        "attributes": {
+            "title": "Data analysis",
+            "description": "",
+            "category": "analysis",
+            "custom_citation": "",
+            "date_created": "2021-02-10T20:42:57.104116Z",
+            "date_modified": "2021-02-10T13:28:18.008354Z",
+            "registration": true,
+            "preprint": false,
+            "fork": false,
+            "collection": false,
+            "tags": [],
+            "access_requests_enabled": false,
+            "node_license": {
+                "copyright_holders": [
+                    ""
+                ],
+                "year": "2021"
+            },
+            "analytics_key": "7cc71945825ed1ac643f965073fad82d432239bbe4f1432d79c75a51ac6c9d2ed43937a0956440b78656c32d213709d2d2e04f08b9dfaf1aa02d20aa9092600ffeb8d690c61d4894c5497b7dea8be1791317ff50240a49d8ad8df684d13257c7479eec3c6a0aacd199a7053f052cd0b256b242a00699e80bb990836b3c809eebe50165112e95d8f12df9fd2bed0fe9cf",
+            "current_user_can_comment": false,
+            "current_user_permissions": [],
+            "current_user_is_contributor": false,
+            "current_user_is_contributor_or_group_member": false,
+            "wiki_enabled": true,
+            "public": true,
+            "reviews_state": "initial",
+            "article_doi": null,
+            "pending_embargo_approval": false,
+            "pending_embargo_termination_approval": false,
+            "embargoed": false,
+            "pending_registration_approval": false,
+            "archiving": false,
+            "pending_withdrawal": false,
+            "withdrawn": false,
+            "date_registered": "2021-02-10T20:42:57.073208Z",
+            "date_withdrawn": null,
+            "embargo_end_date": null,
+            "withdrawal_justification": null,
+            "registration_supplement": "OSF Preregistration",
+            "registered_meta": {
+                "q2": {
+                    "extra": [],
+                    "value": "H1: Under lower external pressure (accuracy), participants in a high-penalty condition offload cognition on AI equally or less often than in a low-penalty condition.\n\nH2: Under higher external pressure (speed), participants offload cognition on AI less in high-penalty conditions compared to low-penalty conditions."
+                },
+                "q3": {
+                    "extra": [],
+                    "value": "Experiment - A researcher randomly assigns treatments to study subjects, this includes field or lab experiments. This is also known as an intervention experiment and includes randomized controlled trials."
+                },
+                "q4": {
+                    "extra": [],
+                    "value": [
+                        "No blinding is involved in this study."
+                    ]
+                },
+                "q5": {
+                    "extra": [],
+                    "value": ""
+                },
+                "q6": {
+                    "value": {
+                        "question": {
+                            "extra": [],
+                            "value": "The experiment will be conducted to investigate whether problem solvers employ differential offloading behaviors when confronted with differential performance goals, Speed (S) H1 or Accuracy (A) H2, in a risky environment. \n\nExperimental task\nParticipants are asked to compare pairs of two-dimensional objects on the screen and solve the task by applying mental resources or AI suggestions and give an answer - whether the objects are identical or different. Within each pair, the stimuli can be rotated around an axis 360 degrees, thus, rotation is not considered a difference. Changing shape, size, and specularity is considered a difference.\n\nOverall, participants face 40 tasks, divided into 4 rounds of 10 trials each.\n\nParticipants are given an initial endowment, and for each mistake they get a penalty $p$. The final payment is given by the initial endowment minus the sum of penalties.\n"
+                        },
+                        "uploader": {
+                            "extra": [],
+                            "value": ""
+                        }
+                    }
+                },
+                "q7": {
+                    "extra": [],
+                    "value": ""
+                },
+                "q8": {
+                    "extra": [],
+                    "value": "Registration prior to creation of data"
+                },
+                "q9": {
+                    "extra": [],
+                    "value": ""
+                },
+                "q10": {
+                    "value": {
+                        "question": {
+                            "extra": [],
+                            "value": "The experiment will be conducted online on the Prolific platform.\n\n1) After accepting the participant consent form, in the first part of the study, participants have to answer a short survey regarding their attitude towards AI and information technology (eight questions). Prior to the second part Participants will also take an attentiveness test.\n\n2) The second part consists of the core experiment task - a mental comparison task.\n\n3) Finally, the third part includes the “post-believes” survey (repetition of the first survey) and collecting demographic information.\n\n4) To be eligible, Participants should be fluent in English and be connected with a Desktop computer. We do not discriminate against participants on any other grounds. Participants are also asked to answer a few attention and comprehension questions.\n"
+                        },
+                        "uploader": {
+                            "extra": [],
+                            "value": ""
+                        }
+                    }
+                },
+                "q11": {
+                    "extra": [],
+                    "value": "We will run the online experiment until we reach at least 70 participants per between-subjects treatment. This sample size seems adequate to identify an effect size from medium to large ($\\alpha=.05$, $\\beta=.20$).\n"
+                },
+                "q12": {
+                    "extra": [],
+                    "value": ""
+                },
+                "q13": {
+                    "extra": [],
+                    "value": ""
+                },
+                "q14": {
+                    "value": {
+                        "question": {
+                            "extra": [],
+                            "value": "Two factors will be experimentally manipulated: Goal and Risk\n\n1) Pressure (between-subjects design)[^calibration]\nHigh: Participants are given a short time to solve the task\nLow: Participants are given a long time to solve the task\n\n2) Penalty (within-subject design)[^calibration]\nHigh: The penalty for mistakes in a task is large\nLow: The penalty for mistakes in a task is small\n\n[^calibration]: The parametric specification of treatment values (penalty and seconds) will be defined following some calibration trials.\n\nTrial-based feedback will be given concerning the correctness of performance after each round (correct/incorrect).\n\nFurthermore, we will run a control session that replicates our main sessions, but without AI. This will serve as control about learning in the task. This way we can disentangle the impact of pure learning from that of AI assistance."
+                        },
+                        "uploader": {
+                            "extra": [],
+                            "value": ""
+                        }
+                    }
+                },
+                "q15": {
+                    "value": {
+                        "question": {
+                            "extra": [],
+                            "value": "The main units of observation are:\n\nPerformance (discrete data): number of correct answers given\nAI adoption (frequency data): frequency of reliance on AI suggestion\nReaction time (continuous data): time that participants spend in the task\n\n\nThese units of observations are compared across controlled manipulations (treatments)\n\nBetween-subject: \nparticipants will be assigned randomly to an Accuracy (A) performance goal or Speed (S) performance goal groups.\n\nWithin-subject:  \nHigh Penalty (HP) and Low Penalty (LP) decision making, which implies a higher and a lower penalty for each incorrect answer, respectively.\nFurthermore, we will control for the impact of pure learning in the task with control sessions that mimic experimental treatments, but without AI.\n"
+                        },
+                        "uploader": {
+                            "extra": [],
+                            "value": ""
+                        }
+                    }
+                },
+                "q16": {
+                    "value": {
+                        "question": {
+                            "extra": [],
+                            "value": ""
+                        },
+                        "uploader": {
+                            "extra": [],
+                            "value": ""
+                        }
+                    }
+                },
+                "q17": {
+                    "value": {
+                        "question": {
+                            "extra": [],
+                            "value": "The analysis will provide a visual description of data (graphs) complemented by non-parametric tests about distributions and central tendencies across treatments.\n\nThe non-parametric analysis will also be corroborated by a mixed Model regression analysis controlling for fixed and random components. Effects will be assessed against the control sessions.\n\nWe will also test pre/post self-reported beliefs in the survey."
+                        },
+                        "uploader": {
+                            "extra": [],
+                            "value": ""
+                        }
+                    }
+                },
+                "q18": {
+                    "extra": [],
+                    "value": ""
+                },
+                "q19": {
+                    "extra": [],
+                    "value": ""
+                },
+                "q20": {
+                    "extra": [],
+                    "value": ""
+                },
+                "q21": {
+                    "extra": [],
+                    "value": ""
+                },
+                "q22": {
+                    "extra": [],
+                    "value": ""
+                },
+                "q23": {
+                    "extra": [],
+                    "value": ""
+                }
+            },
+            "registration_responses": {
+                "q2": "H1: Under lower external pressure (accuracy), participants in a high-penalty condition offload cognition on AI equally or less often than in a low-penalty condition.\n\nH2: Under higher external pressure (speed), participants offload cognition on AI less in high-penalty conditions compared to low-penalty conditions.",
+                "q3": "Experiment - A researcher randomly assigns treatments to study subjects, this includes field or lab experiments. This is also known as an intervention experiment and includes randomized controlled trials.",
+                "q4": [
+                    "No blinding is involved in this study."
+                ],
+                "q5": "",
+                "q8": "Registration prior to creation of data",
+                "q11": "We will run the online experiment until we reach at least 70 participants per between-subjects treatment. This sample size seems adequate to identify an effect size from medium to large ($\\alpha=.05$, $\\beta=.20$).\n",
+                "q23": "",
+                "q6.question": "The experiment will be conducted to investigate whether problem solvers employ differential offloading behaviors when confronted with differential performance goals, Speed (S) H1 or Accuracy (A) H2, in a risky environment. \n\nExperimental task\nParticipants are asked to compare pairs of two-dimensional objects on the screen and solve the task by applying mental resources or AI suggestions and give an answer - whether the objects are identical or different. Within each pair, the stimuli can be rotated around an axis 360 degrees, thus, rotation is not considered a difference. Changing shape, size, and specularity is considered a difference.\n\nOverall, participants face 40 tasks, divided into 4 rounds of 10 trials each.\n\nParticipants are given an initial endowment, and for each mistake they get a penalty $p$. The final payment is given by the initial endowment minus the sum of penalties.\n",
+                "q10.question": "The experiment will be conducted online on the Prolific platform.\n\n1) After accepting the participant consent form, in the first part of the study, participants have to answer a short survey regarding their attitude towards AI and information technology (eight questions). Prior to the second part Participants will also take an attentiveness test.\n\n2) The second part consists of the core experiment task - a mental comparison task.\n\n3) Finally, the third part includes the “post-believes” survey (repetition of the first survey) and collecting demographic information.\n\n4) To be eligible, Participants should be fluent in English and be connected with a Desktop computer. We do not discriminate against participants on any other grounds. Participants are also asked to answer a few attention and comprehension questions.\n",
+                "q14.question": "Two factors will be experimentally manipulated: Goal and Risk\n\n1) Pressure (between-subjects design)[^calibration]\nHigh: Participants are given a short time to solve the task\nLow: Participants are given a long time to solve the task\n\n2) Penalty (within-subject design)[^calibration]\nHigh: The penalty for mistakes in a task is large\nLow: The penalty for mistakes in a task is small\n\n[^calibration]: The parametric specification of treatment values (penalty and seconds) will be defined following some calibration trials.\n\nTrial-based feedback will be given concerning the correctness of performance after each round (correct/incorrect).\n\nFurthermore, we will run a control session that replicates our main sessions, but without AI. This will serve as control about learning in the task. This way we can disentangle the impact of pure learning from that of AI assistance.",
+                "q15.question": "The main units of observation are:\n\nPerformance (discrete data): number of correct answers given\nAI adoption (frequency data): frequency of reliance on AI suggestion\nReaction time (continuous data): time that participants spend in the task\n\n\nThese units of observations are compared across controlled manipulations (treatments)\n\nBetween-subject: \nparticipants will be assigned randomly to an Accuracy (A) performance goal or Speed (S) performance goal groups.\n\nWithin-subject:  \nHigh Penalty (HP) and Low Penalty (LP) decision making, which implies a higher and a lower penalty for each incorrect answer, respectively.\nFurthermore, we will control for the impact of pure learning in the task with control sessions that mimic experimental treatments, but without AI.\n",
+                "q17.question": "The analysis will provide a visual description of data (graphs) complemented by non-parametric tests about distributions and central tendencies across treatments.\n\nThe non-parametric analysis will also be corroborated by a mixed Model regression analysis controlling for fixed and random components. Effects will be assessed against the control sessions.\n\nWe will also test pre/post self-reported beliefs in the survey."
+            }
+        },
+        "relationships": {
+            "license": {
+                "links": {
+                    "related": {
+                        "href": "https://api.osf.io/v2/licenses/563c1cf88c5e4a3877f9e96a/",
+                        "meta": {}
+                    }
+                },
+                "data": {
+                    "id": "563c1cf88c5e4a3877f9e96a",
+                    "type": "licenses"
+                }
+            },
+            "children": {
+                "links": {
+                    "related": {
+                        "href": "https://api.osf.io/v2/registrations/2ezyb/children/",
+                        "meta": {}
+                    }
+                }
+            },
+            "comments": {
+                "links": {
+                    "related": {
+                        "href": "https://api.osf.io/v2/registrations/2ezyb/comments/?filter%5Btarget%5D=2ezyb",
+                        "meta": {}
+                    }
+                }
+            },
+            "contributors": {
+                "links": {
+                    "related": {
+                        "href": "https://api.osf.io/v2/registrations/2ezyb/contributors/",
+                        "meta": {}
+                    }
+                }
+            },
+            "bibliographic_contributors": {
+                "links": {
+                    "related": {
+                        "href": "https://api.osf.io/v2/registrations/2ezyb/bibliographic_contributors/",
+                        "meta": {}
+                    }
+                }
+            },
+            "implicit_contributors": {
+                "links": {
+                    "related": {
+                        "href": "https://api.osf.io/v2/registrations/2ezyb/implicit_contributors/",
+                        "meta": {}
+                    }
+                }
+            },
+            "files": {
+                "links": {
+                    "related": {
+                        "href": "https://api.osf.io/v2/registrations/2ezyb/files/",
+                        "meta": {}
+                    }
+                }
+            },
+            "wikis": {
+                "links": {
+                    "related": {
+                        "href": "https://api.osf.io/v2/registrations/2ezyb/wikis/",
+                        "meta": {}
+                    }
+                }
+            },
+            "forked_from": {
+                "data": null
+            },
+            "template_node": {
+                "data": null
+            },
+            "forks": {
+                "links": {
+                    "related": {
+                        "href": "https://api.osf.io/v2/registrations/2ezyb/forks/",
+                        "meta": {}
+                    }
+                }
+            },
+            "linked_by_nodes": {
+                "links": {
+                    "related": {
+                        "href": "https://api.osf.io/v2/registrations/2ezyb/linked_by_nodes/",
+                        "meta": {}
+                    }
+                }
+            },
+            "linked_by_registrations": {
+                "links": {
+                    "related": {
+                        "href": "https://api.osf.io/v2/registrations/2ezyb/linked_by_registrations/",
+                        "meta": {}
+                    }
+                }
+            },
+            "parent": {
+                "links": {
+                    "related": {
+                        "href": "https://api.osf.io/v2/registrations/mdn5w/",
+                        "meta": {}
+                    }
+                },
+                "data": {
+                    "id": "mdn5w",
+                    "type": "registrations"
+                }
+            },
+            "identifiers": {
+                "links": {
+                    "related": {
+                        "href": "https://api.osf.io/v2/registrations/2ezyb/identifiers/",
+                        "meta": {}
+                    }
+                }
+            },
+            "affiliated_institutions": {
+                "links": {
+                    "related": {
+                        "href": "https://api.osf.io/v2/registrations/2ezyb/institutions/",
+                        "meta": {}
+                    },
+                    "self": {
+                        "href": "https://api.osf.io/v2/registrations/2ezyb/relationships/institutions/",
+                        "meta": {}
+                    }
+                }
+            },
+            "region": {
+                "links": {
+                    "related": {
+                        "href": "https://api.osf.io/v2/regions/de-1/",
+                        "meta": {}
+                    }
+                },
+                "data": {
+                    "id": "de-1",
+                    "type": "regions"
+                }
+            },
+            "root": {
+                "links": {
+                    "related": {
+                        "href": "https://api.osf.io/v2/registrations/mdn5w/",
+                        "meta": {}
+                    }
+                },
+                "data": {
+                    "id": "mdn5w",
+                    "type": "registrations"
+                }
+            },
+            "logs": {
+                "links": {
+                    "related": {
+                        "href": "https://api.osf.io/v2/registrations/2ezyb/logs/",
+                        "meta": {}
+                    }
+                }
+            },
+            "linked_nodes": {
+                "links": {
+                    "related": {
+                        "href": "https://api.osf.io/v2/registrations/2ezyb/linked_nodes/",
+                        "meta": {}
+                    },
+                    "self": {
+                        "href": "https://api.osf.io/v2/registrations/2ezyb/relationships/linked_nodes/",
+                        "meta": {}
+                    }
+                }
+            },
+            "linked_registrations": {
+                "links": {
+                    "related": {
+                        "href": "https://api.osf.io/v2/registrations/2ezyb/linked_registrations/",
+                        "meta": {}
+                    },
+                    "self": {
+                        "href": "https://api.osf.io/v2/registrations/2ezyb/relationships/linked_registrations/",
+                        "meta": {}
+                    }
+                }
+            },
+            "view_only_links": {
+                "links": {
+                    "related": {
+                        "href": "https://api.osf.io/v2/registrations/2ezyb/view_only_links/",
+                        "meta": {}
+                    }
+                }
+            },
+            "citation": {
+                "links": {
+                    "related": {
+                        "href": "https://api.osf.io/v2/registrations/2ezyb/citation/",
+                        "meta": {}
+                    }
+                },
+                "data": {
+                    "id": "2ezyb",
+                    "type": "registrations"
+                }
+            },
+            "storage": {
+                "links": {
+                    "related": {
+                        "href": "https://api.osf.io/v2/nodes/2ezyb/storage/",
+                        "meta": {}
+                    }
+                },
+                "data": {
+                    "id": "2ezyb",
+                    "type": "nodes"
+                }
+            },
+            "registered_by": {
+                "links": {
+                    "related": {
+                        "href": "https://api.osf.io/v2/users/gjz9m/",
+                        "meta": {}
+                    }
+                },
+                "data": {
+                    "id": "gjz9m",
+                    "type": "users"
+                }
+            },
+            "registered_from": {
+                "links": {
+                    "related": {
+                        "href": "https://api.osf.io/v2/nodes/wu53r/",
+                        "meta": {}
+                    }
+                },
+                "data": {
+                    "id": "wu53r",
+                    "type": "nodes"
+                }
+            },
+            "registration_schema": {
+                "links": {
+                    "related": {
+                        "href": "https://api.osf.io/v2/schemas/registrations/5e795fc0d2833800195735d0/",
+                        "meta": {}
+                    }
+                },
+                "data": {
+                    "id": "5e795fc0d2833800195735d0",
+                    "type": "registration-schemas"
+                }
+            },
+            "provider": {
+                "links": {
+                    "related": {
+                        "href": "https://api.osf.io/v2/providers/registrations/osf/",
+                        "meta": {}
+                    }
+                },
+                "data": {
+                    "id": "osf",
+                    "type": "registration-providers"
+                }
+            },
+            "review_actions": {
+                "links": {
+                    "related": {
+                        "href": "https://api.osf.io/v2/registrations/2ezyb/actions/",
+                        "meta": {}
+                    }
+                }
+            },
+            "requests": {
+                "links": {
+                    "related": {
+                        "href": "https://api.osf.io/v2/registrations/2ezyb/requests/",
+                        "meta": {}
+                    }
+                }
+            },
+            "subjects": {
+                "links": {
+                    "related": {
+                        "href": "https://api.osf.io/v2/registrations/2ezyb/subjects/",
+                        "meta": {}
+                    },
+                    "self": {
+                        "href": "https://api.osf.io/v2/registrations/2ezyb/relationships/subjects/",
+                        "meta": {}
+                    }
+                }
+            }
+        },
+        "links": {
+            "html": "https://osf.io/2ezyb/",
+            "self": "https://api.osf.io/v2/registrations/2ezyb/"
+        }
+    },
+    "meta": {
+        "version": "2.20"
+    }
+}
