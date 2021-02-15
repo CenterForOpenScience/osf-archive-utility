@@ -14,3 +14,5 @@ DATACITE_PREFIX = "10.70102"  # Datacite's test DOI prefix
 OSF_USER_THROTTLE_ENABLED = False
 
 OSF_COLLECTION_NAME = "cos-dev-sandbox"
+
+ID_VERSION = "staging_v1"

@@ -1,4 +1,5 @@
 import os
+from io import BytesIO
 import json
 import pytest
 import mock
@@ -20,6 +21,7 @@ from osf_pigeon.pigeon import (
 )
 import internetarchive
 import zipfile
+from osf_pigeon.settings import ID_VERSION
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -241,7 +243,7 @@ class TestMetadata:
 
     @pytest.fixture
     def zip_data(self):
-        return b"Clyde Simmons is underrated"
+        return BytesIO(b"Clyde Simmons is underrated")
 
     @pytest.fixture
     def temp_dir(self):
@@ -268,7 +270,7 @@ class TestMetadata:
         assert metadata == {
             "title": "Root Registration with no children",
             "description": "This is a fake registration to test how to structure our project.",
-            "date": "2021-02-08",
+            "date_created": "2021-02-08",
             "contributor": "Center for Open Science",
         }
 
@@ -375,12 +377,12 @@ class TestSubcollections:
         )
 
         mock_ia_client.item.upload.assert_called_with(
-            files={'dummy.txt': mock.ANY},
+            files={"dummy.txt": mock.ANY},
             metadata={
-                'mediatype': 'collection',
-                'collection': 'osf-registration-providers-osf',
-                'title': 'Collection for Root Registration with no children'
-            }
+                "mediatype": "collection",
+                "collection": f"collection-osf-registration-providers-osf-{ID_VERSION}",
+                "title": "Collection for Root Registration with no children",
+            },
         )
 
     def test_find_subcollection_has_siblings(
@@ -388,7 +390,8 @@ class TestSubcollections:
     ):
         mock_osf_api.add(
             responses.GET,
-            "https://api.osf.io/v2/registrations/mdn5w/?embed=children&embed=parent&version=2.20",
+            "https://api.osf.io/v2/registrations/mdn5w/?"
+            "embed=children&embed=parent&version=2.20&embed=children",
             body=parent_with_children,
             status=200,
         )
@@ -400,12 +403,12 @@ class TestSubcollections:
             config={"s3": {"access": "notreal", "secret": "fake"}}
         )
         mock_ia_client.item.upload.assert_called_with(
-            files={'dummy.txt': mock.ANY},
+            files={"dummy.txt": mock.ANY},
             metadata={
-                'mediatype': 'collection',
-                'collection': 'osf-registration-providers-osf',
-                'title': 'Collection for Parent with 3 Children'
-            }
+                "mediatype": "collection",
+                "collection": f"collection-osf-registration-providers-osf-{ID_VERSION}",
+                "title": "Collection for Parent with 3 Children",
+            },
         )
 
     def test_find_subcollection_only_child(
@@ -418,13 +421,15 @@ class TestSubcollections:
     ):
         mock_osf_api.add(
             responses.GET,
-            "https://api.osf.io/v2/registrations/mdn5w/?embed=children&embed=parent&version=2.20",
+            "https://api.osf.io/v2/registrations/mdn5w/"
+            "?embed=children&embed=parent&version=2.20&embed=children",
             body=parent_with_one_child,
             status=200,
         )
         mock_osf_api.add(
             responses.GET,
-            "https://api.osf.io/v2/registrations/nope1/?embed=children&embed=parent&version=2.20",
+            "https://api.osf.io/v2/registrations/nope1/"
+            "?embed=children&embed=parent&version=2.20&embed=children",
             body=parent_with_children,
             status=200,
         )
@@ -436,12 +441,12 @@ class TestSubcollections:
             config={"s3": {"access": "notreal", "secret": "fake"}}
         )
         mock_ia_client.item.upload.assert_called_with(
-            files={'dummy.txt': mock.ANY},
+            files={"dummy.txt": mock.ANY},
             metadata={
-                'mediatype': 'collection',
-                'collection': 'osf-registration-providers-osf',
-                'title': 'Collection for Parent with 3 Children'
-            }
+                "mediatype": "collection",
+                "collection": f"collection-osf-registration-providers-osf-{ID_VERSION}",
+                "title": "Collection for Parent with 3 Children",
+            },
         )
 
 
@@ -452,7 +457,14 @@ class TestUpload:
 
     @pytest.fixture
     def zip_data(self):
-        return b"Clyde Simmons is underrated"
+        return BytesIO(b"Clyde Simmons is underrated")
+
+    @pytest.fixture
+    def temp_dir(self, zip_data):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with open(temp_dir, "wb") as fp:
+                fp.write(zip_data)
+            yield temp_dir
 
     @pytest.fixture
     def metadata(self):
@@ -464,10 +476,10 @@ class TestUpload:
         with tempfile.TemporaryDirectory() as temp_dir:
             yield temp_dir
 
-    def test_upload(self, mock_ia_client, mock_osf_api, guid, zip_data, metadata):
+    def test_upload(self, mock_ia_client, mock_osf_api, guid, temp_dir, metadata):
         upload(
             guid,
-            zip_data,
+            temp_dir,
             metadata,
             ia_access_key="Buddy Ryan",
             ia_secret_key="Fletcher Cox",
@@ -475,20 +487,20 @@ class TestUpload:
 
         mock_ia_client.session.get_item.assert_called_with("guid0")
         mock_ia_client.item.upload.assert_called_with(
-            {"bag.zip": zip_data},
+            {"bag.zip": mock.ANY},
             metadata={
-                'collection': 'collection-osf-registrations-pkdm6-2021-02-08T23-09-41.562456',
-                'title': 'Root Registration with no children',
-                'description': 'This is a fake registration to test how to structure our project.',
-                'date': '2021-02-08',
-                'contributor': 'Center for Open Science'
+                "collection": f"collection-osf-registrations-pkdm6-2021-02-08T23-09-41.562456-{ID_VERSION}",
+                "title": "Root Registration with no children",
+                "description": "This is a fake registration to test how to structure our project.",
+                "date_created": "2021-02-08",
+                "contributor": "Center for Open Science",
             },
             access_key="Buddy Ryan",
             secret_key="Fletcher Cox",
         )
 
     def test_upload_with_different_provider(
-        self, mock_ia_client, mock_osf_api, guid, zip_data, metadata
+        self, mock_ia_client, mock_osf_api, guid, temp_dir, metadata
     ):
         """
         Different providers should get uploaded to different collections
@@ -497,7 +509,7 @@ class TestUpload:
 
         upload(
             guid,
-            zip_data,
+            temp_dir,
             metadata,
             ia_access_key="Buddy Ryan",
             ia_secret_key="Fletcher Cox",
@@ -505,13 +517,13 @@ class TestUpload:
 
         mock_ia_client.session.get_item.assert_called_with("guid0")
         mock_ia_client.item.upload.assert_called_with(
-            {"bag.zip": zip_data},
+            {"bag.zip": mock.ANY},
             metadata={
-                'collection': 'collection-osf-registrations-pkdm6-2021-02-08T23-09-41.562456',
-                'title': 'Root Registration with no children',
-                'description': 'This is a fake registration to test how to structure our project.',
-                'date': '2021-02-08',
-                'contributor': 'Center for Open Science'
+                "collection": f"collection-osf-registrations-pkdm6-2021-02-08T23-09-41.562456-{ID_VERSION}",
+                "title": "Root Registration with no children",
+                "description": "This is a fake registration to test how to structure our project.",
+                "date_created": "2021-02-08",
+                "contributor": "Center for Open Science",
             },
             access_key="Buddy Ryan",
             secret_key="Fletcher Cox",

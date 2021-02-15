@@ -21,17 +21,45 @@ import zipfile
 import bagit
 
 
-def get_id(metadata):
+def get_id(metadata, collection=False):
+    """
+    Naming scheme for osf items
+    `{django app name}-{type}-{guid/_id}-{date registered if registration}-{version number}`
+
+    date registered uses the format: %Y-%m-%dT%H-%M-%S.%f to avoid illegal char `:`
+
+    Collections have the prefix, `collection-` for registrations
+
+    :param metadata:
+    :return:
+    """
     date = datetime.strptime(
-        metadata["data"]["attributes"]["date_registered"],
-        "%Y-%m-%dT%H:%M:%S.%fZ"
-    ).strftime('%Y-%m-%dT%H-%M-%S.%f')
-    return f'osf-{metadata["data"]["type"]}-{metadata["data"]["id"]}-{date}'
+        metadata["data"]["attributes"]["date_registered"], "%Y-%m-%dT%H:%M:%S.%fZ"
+    ).strftime("%Y-%m-%dT%H-%M-%S.%f")
+
+    item_id = f'osf-{metadata["data"]["type"]}-{metadata["data"]["id"]}-{date}-{settings.ID_VERSION}'
+    if collection:
+        return f"collection-{item_id}"
+    return item_id
 
 
 def get_provider_id(metadata):
-    return f'osf-registration-providers' \
-           f'-{metadata["data"]["relationships"]["provider"]["data"]["id"]}'
+    """
+    Naming scheme for osf items
+    `{django app name}-{type}-{guid/_id}-{date registered if registration}-{version number}`
+
+    date registered uses the format: %Y-%m-%dT%H-%M-%S.%f to avoid illegal char `:`
+
+    Collections have the prefix, `collection-` in the current scheme providers are always
+    collections.
+
+    :param metadata:
+    :return:
+    """
+    return (
+        f"collection-osf-registration-providers"
+        f'-{metadata["data"]["relationships"]["provider"]["data"]["id"]}-{settings.ID_VERSION}'
+    )
 
 
 def get_and_write_file_data_to_temp(url, temp_dir, dir_name):
@@ -80,23 +108,29 @@ def create_zip_data(temp_dir):
 
 
 def format_metadata_for_ia_item(json_metadata):
+    """
+    This is meant to take the response JSON metadata and format it for IA buckets, this is not
+    used to generate JSON to be uploaded as raw data into the buckets.
+    :param json_metadata:
+    :return:
+    """
 
     date_string = json_metadata["data"]["attributes"]["date_created"]
     date_string = date_string.partition(".")[0]
     date_time = datetime.strptime(date_string, "%Y-%m-%dT%H:%M:%S")
 
-    metadata = dict(
+    ia_metadata = dict(
         title=json_metadata["data"]["attributes"]["title"],
         description=json_metadata["data"]["attributes"]["description"],
-        date=date_time.strftime("%Y-%m-%d"),
+        date_created=date_time.strftime("%Y-%m-%d"),
         contributor="Center for Open Science",
     )
 
     article_doi = json_metadata["data"]["attributes"]["article_doi"]
     if article_doi:
-        metadata["external-identifier"] = f"urn:doi:{article_doi}"
+        ia_metadata["external-identifier"] = f"urn:doi:{article_doi}"
 
-    return metadata
+    return ia_metadata
 
 
 def modify_metadata_with_retry(ia_item, metadata, retries=2, sleep_time=60):
@@ -237,7 +271,9 @@ def sync_metadata(item_name, metadata, ia_access_key, ia_secret_key):
 def find_subcollection_for_registration(metadata, ia_access_key, ia_secret_key):
     """
     We are following the typical osf node structure with one quirk, components with no siblings are
-     all pointed to the first parent directory with multiple children.
+     all pointed to the first parent directory with multiple children. All root nodes are in a
+     provider collection which is defined outside of this repo.
+
     :param metadata:
     :param ia_access_key:
     :param ia_secret_key:
@@ -246,9 +282,9 @@ def find_subcollection_for_registration(metadata, ia_access_key, ia_secret_key):
     if (
         metadata["data"]["relationships"]["parent"]["data"] is None
     ):  # is root, gets own collection
-        root_collection_id = get_id(metadata)
+        root_collection_id = get_id(metadata, collection=True)
         create_subcollection(
-            f"collection-{root_collection_id}",
+            root_collection_id,
             ia_access_key,
             ia_secret_key,
             metadata={
@@ -256,12 +292,14 @@ def find_subcollection_for_registration(metadata, ia_access_key, ia_secret_key):
             },
             parent_collection=get_provider_id(metadata),
         )
-        return f"collection-{root_collection_id}"
+        return root_collection_id
     else:
-        parent_url = metadata["data"]["relationships"]["parent"]["links"]["related"]["href"]
+        parent_url = metadata["data"]["relationships"]["parent"]["links"]["related"][
+            "href"
+        ]
         parent_data = asyncio.run(
             get_paginated_data(
-                f'{parent_url}?embed=children&embed=parent&version=2.20'
+                f"{parent_url}?embed=children&embed=parent&version=2.20&embed=children"
             )
         )
         if parent_data["data"]["embeds"]["children"]["meta"]["total"] == 1:
@@ -271,7 +309,7 @@ def find_subcollection_for_registration(metadata, ia_access_key, ia_secret_key):
             )
 
         else:
-            parent_collection_id = f"collection-{get_id(parent_data)}"
+            parent_collection_id = get_id(parent_data, collection=True)
             errors = parent_data["data"]["embeds"]["parent"].get("errors")
             if errors and errors[0]["detail"] == "Not found.":
                 create_subcollection(
@@ -291,15 +329,22 @@ def find_subcollection_for_registration(metadata, ia_access_key, ia_secret_key):
                     metadata={
                         "title": f'Collection for {parent_data["data"]["attributes"]["title"]}'
                     },
-                    parent_collection=get_id(parent_data),
+                    parent_collection=get_id(parent_data, collection=True),
                 )
-            return f"collection-{get_id(parent_data)}"
+            return get_id(parent_data, collection=True)
 
 
 def create_subcollection(
-    collection_id, ia_access_key, ia_secret_key, metadata=None, parent_collection=None
+    collection_id,
+    ia_access_key,
+    ia_secret_key,
+    metadata=None,
+    parent_collection=None,
+    retries=3,
 ):
     """
+    The expected sub-collection hierarchy is as follows top-level OSF collection -> provider collection -> collection for nodes
+    with multiple children -> all only child nodes
 
     :param metadata: dict should attributes for the provider's sub-collection is being created
     :param parent_collection: str the name of the  sub-collection's parent
@@ -326,53 +371,57 @@ def create_subcollection(
             },
         )
     except requests.exceptions.HTTPError as e:
+        # You don't have permission to join because it hasn't be created yet
         if (
             "Access Denied - You lack sufficient privileges to write to those collections"
             in str(e)
+            and retries
         ):
+            retries -= 1
             create_subcollection(
                 parent_collection,
                 ia_access_key,
                 ia_secret_key,
-                metadata=dict(),
                 parent_collection=parent_collection,
+                retries=retries,
             )
         else:
             raise e
 
 
 def upload(
-    item_name, zip_data, metadata, ia_access_key, ia_secret_key, collection_id=None
+    item_name, tmp_dir, metadata, ia_access_key, ia_secret_key, collection_id=None, retries=3
 ):
     ia_item = get_ia_item(item_name, ia_access_key, ia_secret_key)
-
     if collection_id is None:
         collection_id = find_subcollection_for_registration(
             metadata, ia_access_key, ia_secret_key
         )
+
     ia_metadata = format_metadata_for_ia_item(metadata)
+
     try:
         ia_item.upload(
-            {"bag.zip": zip_data},
+            {"bag.zip": create_zip_data(tmp_dir)},
             metadata={"collection": collection_id, **ia_metadata},
             access_key=ia_access_key,
             secret_key=ia_secret_key,
         )
     except requests.exceptions.HTTPError as e:
-        # You don't have permission to join because it hasn't be created yet
+        # You don't have permission to join because a collection because it might not have been created yet.
         if (
             "Access Denied - You lack sufficient privileges to write to those collections"
-            in str(e)
+            in str(e) and retries
         ):
-            zip_data = open(zip_data)
-            zip_data.seek(0)
+            retries -= 1
             upload(
                 item_name,
-                zip_data,
+                create_zip_data(tmp_dir),
                 metadata,
                 ia_access_key,
                 ia_secret_key,
                 collection_id=collection_id,
+                retries=retries
             )
         else:
             raise e
@@ -431,10 +480,7 @@ def main(
             datacite_prefix=datacite_prefix,
         )
 
-        zip_data = create_zip_data(temp_dir)
         with open(os.path.join(temp_dir, "data", "registration.json"), "r") as f:
             metadata = json.loads(f.read())
 
-        upload(
-            get_id(metadata), zip_data, metadata, ia_access_key, ia_secret_key
-        )
+        upload(get_id(metadata), temp_dir, metadata, ia_access_key, ia_secret_key)
