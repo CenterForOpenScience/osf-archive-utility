@@ -62,14 +62,14 @@ def get_provider_id(metadata):
     )
 
 
-def get_and_write_file_data_to_temp(url, temp_dir, dir_name):
+async def get_and_write_file_data_to_temp(url, temp_dir, dir_name):
     response = get_with_retry(url)
     with open(os.path.join(temp_dir, dir_name), "wb") as fp:
         fp.write(response.content)
 
 
-def get_and_write_json_to_temp(url, temp_dir, filename, parse_json=None):
-    pages = asyncio.run(get_paginated_data(url, parse_json))
+async def get_and_write_json_to_temp(url, temp_dir, filename, parse_json=None):
+    pages = await get_paginated_data(url, parse_json)
     with open(os.path.join(temp_dir, filename), "w") as fp:
         fp.write(json.dumps(pages))
 
@@ -104,7 +104,9 @@ def create_zip_data(temp_dir):
                 file_name = re.sub(f"^{temp_dir}", "", file_path)
                 zip_file.write(file_path, arcname=file_name)
     zip_data.seek(0)
-    return zip_data
+
+    with open(os.path.join(temp_dir, "bag.zip"), "wb") as fp:
+        fp.write(zip_data.read())
 
 
 def format_metadata_for_ia_item(json_metadata):
@@ -254,12 +256,18 @@ async def get_paginated_data(url, parse_json=None):
 
 def get_ia_item(guid, ia_access_key, ia_secret_key):
     session = internetarchive.get_session(
-        config={"s3": {"access": ia_access_key, "secret": ia_secret_key}}
+        config={
+            "s3": {
+                "access": ia_access_key, "secret": ia_secret_key
+            },
+        }
     )
+    print(session.__dict__)
+
     return session.get_item(guid)
 
 
-def sync_metadata(item_name, metadata, ia_access_key, ia_secret_key):
+async def sync_metadata(item_name, metadata, ia_access_key, ia_secret_key):
     ia_item = get_ia_item(item_name, ia_access_key, ia_secret_key)
 
     if metadata.get("moderation_state") == "withdrawn":  # withdrawn == not searchable
@@ -268,7 +276,7 @@ def sync_metadata(item_name, metadata, ia_access_key, ia_secret_key):
     modify_metadata_with_retry(ia_item, metadata)
 
 
-def find_subcollection_for_registration(metadata, ia_access_key, ia_secret_key):
+async def find_subcollection_for_registration(metadata, ia_access_key, ia_secret_key):
     """
     We are following the typical osf node structure with one quirk, components with no siblings are
      all pointed to the first parent directory with multiple children. All root nodes are in a
@@ -297,14 +305,12 @@ def find_subcollection_for_registration(metadata, ia_access_key, ia_secret_key):
         parent_url = metadata["data"]["relationships"]["parent"]["links"]["related"][
             "href"
         ]
-        parent_data = asyncio.run(
-            get_paginated_data(
-                f"{parent_url}?embed=children&embed=parent&version=2.20&embed=children"
-            )
+        parent_data = await get_paginated_data(
+            f"{parent_url}?embed=parent&version=2.20&embed=children"
         )
         if parent_data["data"]["embeds"]["children"]["meta"]["total"] == 1:
             # This is an only child recurse up to reach grandparent with multiple children or root
-            return find_subcollection_for_registration(
+            return await find_subcollection_for_registration(
                 parent_data, ia_access_key, ia_secret_key
             )
 
@@ -389,12 +395,20 @@ def create_subcollection(
             raise e
 
 
-def upload(
-    item_name, tmp_dir, metadata, ia_access_key, ia_secret_key, collection_id=None, retries=3
+async def upload(
+    item_name,
+    tmp_dir,
+    metadata,
+    ia_access_key,
+    ia_secret_key,
+    collection_id=None,
+    retries=3,
 ):
     ia_item = get_ia_item(item_name, ia_access_key, ia_secret_key)
+    print(ia_item.__dict__)
+
     if collection_id is None:
-        collection_id = find_subcollection_for_registration(
+        collection_id = await find_subcollection_for_registration(
             metadata, ia_access_key, ia_secret_key
         )
 
@@ -402,7 +416,7 @@ def upload(
 
     try:
         ia_item.upload(
-            {"bag.zip": create_zip_data(tmp_dir)},
+            {"bag.zip": os.path.join(tmp_dir, "bag.zip")},
             metadata={"collection": collection_id, **ia_metadata},
             access_key=ia_access_key,
             secret_key=ia_secret_key,
@@ -411,17 +425,19 @@ def upload(
         # You don't have permission to join because a collection because it might not have been created yet.
         if (
             "Access Denied - You lack sufficient privileges to write to those collections"
-            in str(e) and retries
+            in str(e)
+            and retries
         ):
             retries -= 1
-            upload(
+            time.sleep(10)
+            await upload(
                 item_name,
-                create_zip_data(tmp_dir),
+                tmp_dir,
                 metadata,
                 ia_access_key,
                 ia_secret_key,
                 collection_id=collection_id,
-                retries=retries
+                retries=retries,
             )
         else:
             raise e
@@ -429,7 +445,7 @@ def upload(
     return ia_item
 
 
-def main(
+async def main(
     guid,
     datacite_username=settings.DATACITE_USERNAME,
     datacite_password=settings.DATACITE_PASSWORD,
@@ -438,7 +454,7 @@ def main(
     ia_secret_key=settings.IA_SECRET_KEY,
     osf_api_url=settings.OSF_API_URL,
     osf_files_url=settings.OSF_FILES_URL,
-    osf_bearer_token=settings.OSF_BEARER_TOKEN
+    osf_bearer_token=settings.OSF_BEARER_TOKEN,
 ):
 
     settings.OSF_BEARER_TOKEN = osf_bearer_token
@@ -450,27 +466,27 @@ def main(
     ), "Internet Archive secret key not passed to pigeon"
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        get_and_write_file_data_to_temp(
+        await get_and_write_file_data_to_temp(
             f"{osf_files_url}v1/resources/{guid}/providers/osfstorage/?zip=",
             temp_dir,
             "archived_files.zip",
         )
-        get_and_write_json_to_temp(
+        await get_and_write_json_to_temp(
             f"{osf_api_url}v2/registrations/{guid}/wikis/",
             temp_dir,
             "wikis.json",
         )
-        get_and_write_json_to_temp(
+        await get_and_write_json_to_temp(
             f"{osf_api_url}v2/registrations/{guid}/logs/",
             temp_dir,
             "logs.json",
         )
-        get_and_write_json_to_temp(
-            f"{osf_api_url}v2/guids/{guid}?embed=parent&embed=children&version=2.20",
+        await get_and_write_json_to_temp(
+            f"{osf_api_url}v2/guids/{guid}/?embed=parent&embed=children&version=2.20",
             temp_dir,
             "registration.json",
         )
-        get_and_write_json_to_temp(
+        await get_and_write_json_to_temp(
             f"{osf_api_url}v2/registrations/{guid}/contributors/",
             temp_dir,
             "contributors.json",
@@ -487,4 +503,5 @@ def main(
         with open(os.path.join(temp_dir, "data", "registration.json"), "r") as f:
             metadata = json.loads(f.read())
 
-        upload(get_id(metadata), temp_dir, metadata, ia_access_key, ia_secret_key)
+        create_zip_data(temp_dir)
+        await upload(get_id(metadata), temp_dir, metadata, ia_access_key, ia_secret_key)
