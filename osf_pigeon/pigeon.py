@@ -159,7 +159,7 @@ def get_datacite_metadata(doi, datacite_username, datacite_password, datacite_pr
         password=datacite_password,
         prefix=datacite_prefix,
     )
-    return client.metadata_get(doi)
+    return ""
 
 
 @sleep_and_retry
@@ -436,8 +436,12 @@ def main(
     datacite_prefix=settings.DATACITE_PREFIX,
     ia_access_key=settings.IA_ACCESS_KEY,
     ia_secret_key=settings.IA_SECRET_KEY,
+    osf_api_url=settings.OSF_API_URL,
+    osf_files_url=settings.OSF_FILES_URL,
+    osf_bearer_token=settings.OSF_BEARER_TOKEN
 ):
 
+    settings.OSF_BEARER_TOKEN = osf_bearer_token
     assert isinstance(
         ia_access_key, str
     ), "Internet Archive access key was not passed to pigeon"
@@ -447,27 +451,27 @@ def main(
 
     with tempfile.TemporaryDirectory() as temp_dir:
         get_and_write_file_data_to_temp(
-            f"{settings.OSF_FILES_URL}v1/resources/{guid}/providers/osfstorage/?zip=",
+            f"{osf_files_url}v1/resources/{guid}/providers/osfstorage/?zip=",
             temp_dir,
             "archived_files.zip",
         )
         get_and_write_json_to_temp(
-            f"{settings.OSF_API_URL}v2/registrations/{guid}/wikis/",
+            f"{osf_api_url}v2/registrations/{guid}/wikis/",
             temp_dir,
             "wikis.json",
         )
         get_and_write_json_to_temp(
-            f"{settings.OSF_API_URL}v2/registrations/{guid}/logs/",
+            f"{osf_api_url}v2/registrations/{guid}/logs/",
             temp_dir,
             "logs.json",
         )
         get_and_write_json_to_temp(
-            f"{settings.OSF_API_URL}v2/guids/{guid}?embed=parent&embed=children&version=2.20",
+            f"{osf_api_url}v2/guids/{guid}?embed=parent&embed=children&version=2.20",
             temp_dir,
             "registration.json",
         )
         get_and_write_json_to_temp(
-            f"{settings.OSF_API_URL}v2/registrations/{guid}/contributors/",
+            f"{osf_api_url}v2/registrations/{guid}/contributors/",
             temp_dir,
             "contributors.json",
             parse_json=get_contributors,
