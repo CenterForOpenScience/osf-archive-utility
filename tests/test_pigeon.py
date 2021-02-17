@@ -44,12 +44,10 @@ class TestGetAndWriteFileDataToTemp:
         self, mock_waterbutler, guid, zip_name, zip_data
     ):
         with tempfile.TemporaryDirectory() as temp_dir:
-            asyncio.run(
-                get_and_write_file_data_to_temp(
-                    f"{settings.OSF_FILES_URL}v1/resources/{guid}/providers/osfstorage/?zip=",
-                    temp_dir,
-                    zip_name,
-                )
+            get_and_write_file_data_to_temp(
+                f"{settings.OSF_FILES_URL}v1/resources/{guid}/providers/osfstorage/?zip=",
+                temp_dir,
+                zip_name,
             )
             assert len(os.listdir(temp_dir)) == 1
             assert os.listdir(temp_dir)[0] == zip_name
@@ -83,10 +81,8 @@ class TestGetAndWriteJSONToTemp:
         )
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            asyncio.run(
-                get_and_write_json_to_temp(
-                    f"{settings.OSF_API_URL}v2/guids/{guid}", temp_dir, file_name
-                )
+            get_and_write_json_to_temp(
+                f"{settings.OSF_API_URL}v2/guids/{guid}", temp_dir, file_name
             )
             assert len(os.listdir(temp_dir)) == 1
             assert os.listdir(temp_dir)[0] == file_name
@@ -141,12 +137,10 @@ class TestGetAndWriteJSONToTempMultipage:
         )
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            asyncio.run(
-                get_and_write_json_to_temp(
-                    f"{settings.OSF_API_URL}v2/registrations/{guid}/wikis/",
-                    temp_dir,
-                    file_name,
-                )
+            get_and_write_json_to_temp(
+                f"{settings.OSF_API_URL}v2/registrations/{guid}/wikis/",
+                temp_dir,
+                file_name,
             )
             assert len(os.listdir(temp_dir)) == 1
             assert os.listdir(temp_dir)[0] == file_name
@@ -191,13 +185,11 @@ class TestContributors:
         )
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            asyncio.run(
-                get_and_write_json_to_temp(
-                    f"{settings.OSF_API_URL}v2/registrations/{guid}/contributors/",
-                    temp_dir,
-                    file_name,
-                    parse_json=get_contributors,
-                )
+            get_and_write_json_to_temp(
+                f"{settings.OSF_API_URL}v2/registrations/{guid}/contributors/",
+                temp_dir,
+                file_name,
+                parse_json=get_contributors,
             )
             assert len(os.listdir(temp_dir)) == 1
             assert os.listdir(temp_dir)[0] == file_name
@@ -233,12 +225,14 @@ class TestCreateZipData:
             fp.write(b"partytime")
 
     def test_create_zip_data(self, temp_dir, test_file):
-        zip_data = create_zip_data(temp_dir)
+        create_zip_data(temp_dir)
 
-        zip_file = zipfile.ZipFile(zip_data)
-        assert len(zip_file.infolist()) == 1
-        assert zip_file.infolist()[0].filename == "test_file.txt"
-        zip_file.extract("test_file.txt", temp_dir)  # just to read
+        with open(os.path.join(temp_dir, "bag.zip"), "rb") as fp:
+            zip_file = zipfile.ZipFile(fp)
+
+            assert len(zip_file.infolist()) == 1
+            assert zip_file.infolist()[0].filename == "test_file.txt"
+            zip_file.extract("test_file.txt", temp_dir)  # just to read
 
         assert (
             open(os.path.join(temp_dir, "test_file.txt"), "rb").read() == b"partytime"
@@ -379,9 +373,7 @@ class TestSubcollections:
         pass
 
     def test_find_subcollection_root(self, mock_ia_client, root_metadata):
-        asyncio.run(
-            find_subcollection_for_registration(root_metadata, "notreal", "fake")
-        )
+        find_subcollection_for_registration(root_metadata, "notreal", "fake")
 
         mock_ia_client.assert_called_with(
             config={"s3": {"access": "notreal", "secret": "fake"}}
@@ -402,15 +394,13 @@ class TestSubcollections:
         mock_osf_api.add(
             responses.GET,
             "https://api.osf.io/v2/registrations/mdn5w/?"
-            "embed=children&embed=parent&version=2.20&embed=children",
+            "embed=children&embed=parent&version=2.20",
             body=parent_with_children,
             status=200,
         )
 
-        asyncio.run(
-            find_subcollection_for_registration(
-                json.loads(child_metadata), "notreal", "fake"
-            )
+        find_subcollection_for_registration(
+            json.loads(child_metadata), "notreal", "fake"
         )
         mock_ia_client.assert_called_with(
             config={"s3": {"access": "notreal", "secret": "fake"}}
@@ -435,23 +425,22 @@ class TestSubcollections:
         mock_osf_api.add(
             responses.GET,
             "https://api.osf.io/v2/registrations/mdn5w/"
-            "?embed=children&embed=parent&version=2.20&embed=children",
+            "?embed=children&embed=parent&version=2.20",
             body=parent_with_one_child,
             status=200,
         )
         mock_osf_api.add(
             responses.GET,
             "https://api.osf.io/v2/registrations/nope1/"
-            "?embed=children&embed=parent&version=2.20&embed=children",
+            "?embed=children&embed=parent&version=2.20",
             body=parent_with_children,
             status=200,
         )
 
-        asyncio.run(
-            find_subcollection_for_registration(
-                json.loads(child_metadata), "notreal", "fake"
-            )
+        find_subcollection_for_registration(
+            json.loads(child_metadata), "notreal", "fake"
         )
+
         mock_ia_client.assert_called_with(
             config={"s3": {"access": "notreal", "secret": "fake"}}
         )
@@ -492,14 +481,12 @@ class TestUpload:
             yield temp_dir
 
     def test_upload(self, mock_ia_client, mock_osf_api, guid, temp_dir, metadata):
-        asyncio.run(
-            upload(
-                guid,
-                temp_dir,
-                metadata,
-                ia_access_key="Buddy Ryan",
-                ia_secret_key="Fletcher Cox",
-            )
+        upload(
+            guid,
+            temp_dir,
+            metadata,
+            ia_access_key="Buddy Ryan",
+            ia_secret_key="Fletcher Cox",
         )
 
         mock_ia_client.session.get_item.assert_called_with("guid0")
@@ -524,14 +511,12 @@ class TestUpload:
         """
         metadata["data"]["relationships"]["provider"]["data"]["id"] = "burds"
 
-        asyncio.run(
-            upload(
-                guid,
-                temp_dir,
-                metadata,
-                ia_access_key="Buddy Ryan",
-                ia_secret_key="Fletcher Cox",
-            )
+        upload(
+            guid,
+            temp_dir,
+            metadata,
+            ia_access_key="Buddy Ryan",
+            ia_secret_key="Fletcher Cox",
         )
 
         mock_ia_client.session.get_item.assert_called_with("guid0")

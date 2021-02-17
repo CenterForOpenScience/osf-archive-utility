@@ -8,6 +8,7 @@ from osf_pigeon.settings import (
     IA_ACCESS_KEY,
     IA_SECRET_KEY,
     OSF_BEARER_TOKEN,
+    ID_VERSION,
 )
 
 
@@ -49,6 +50,12 @@ if __name__ == "__main__":
         help="This is the osf bear token for using OSF's api",
         required=False,
     )
+    parser.add_argument(
+        "-v",
+        "--id_version",
+        help="This is the osf bear token for using OSF's api",
+        required=False,
+    )
     args = parser.parse_args()
     guid = args.guid
     datacite_password = args.datacite_password
@@ -56,11 +63,13 @@ if __name__ == "__main__":
     ia_access_key = args.ia_access_key
     ia_secret_key = args.ia_secret_key
     osf_bearer_token = args.osf_bearer_token
-    asyncio.run(main(
+    id_version = args.id_version
+    main(
         guid,
         datacite_password=datacite_password or DATACITE_PASSWORD,
         datacite_username=datacite_username or DATACITE_USERNAME,
         ia_access_key=ia_access_key or IA_ACCESS_KEY,
         ia_secret_key=ia_secret_key or IA_SECRET_KEY,
         osf_bearer_token=osf_bearer_token or OSF_BEARER_TOKEN,
-    ))
+        id_version=id_version or ID_VERSION,
+    )

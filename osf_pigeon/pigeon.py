@@ -5,6 +5,7 @@ import os
 from io import BytesIO
 from datetime import datetime
 import internetarchive
+from asyncio import events
 
 import tempfile
 import math
@@ -62,14 +63,14 @@ def get_provider_id(metadata):
     )
 
 
-async def get_and_write_file_data_to_temp(url, temp_dir, dir_name):
+def get_and_write_file_data_to_temp(url, temp_dir, dir_name):
     response = get_with_retry(url)
     with open(os.path.join(temp_dir, dir_name), "wb") as fp:
         fp.write(response.content)
 
 
-async def get_and_write_json_to_temp(url, temp_dir, filename, parse_json=None):
-    pages = await get_paginated_data(url, parse_json)
+def get_and_write_json_to_temp(url, temp_dir, filename, parse_json=None):
+    pages = run(get_paginated_data(url, parse_json))
     with open(os.path.join(temp_dir, filename), "w") as fp:
         fp.write(json.dumps(pages))
 
@@ -161,7 +162,7 @@ def get_datacite_metadata(doi, datacite_username, datacite_password, datacite_pr
         password=datacite_password,
         prefix=datacite_prefix,
     )
-    return ""
+    return client.metadata_get(doi)
 
 
 @sleep_and_retry
@@ -257,17 +258,13 @@ async def get_paginated_data(url, parse_json=None):
 def get_ia_item(guid, ia_access_key, ia_secret_key):
     session = internetarchive.get_session(
         config={
-            "s3": {
-                "access": ia_access_key, "secret": ia_secret_key
-            },
-        }
+            "s3": {"access": ia_access_key, "secret": ia_secret_key},
+        },
     )
-    print(session.__dict__)
-
     return session.get_item(guid)
 
 
-async def sync_metadata(item_name, metadata, ia_access_key, ia_secret_key):
+def sync_metadata(item_name, metadata, ia_access_key, ia_secret_key):
     ia_item = get_ia_item(item_name, ia_access_key, ia_secret_key)
 
     if metadata.get("moderation_state") == "withdrawn":  # withdrawn == not searchable
@@ -276,7 +273,7 @@ async def sync_metadata(item_name, metadata, ia_access_key, ia_secret_key):
     modify_metadata_with_retry(ia_item, metadata)
 
 
-async def find_subcollection_for_registration(metadata, ia_access_key, ia_secret_key):
+def find_subcollection_for_registration(metadata, ia_access_key, ia_secret_key):
     """
     We are following the typical osf node structure with one quirk, components with no siblings are
      all pointed to the first parent directory with multiple children. All root nodes are in a
@@ -287,6 +284,7 @@ async def find_subcollection_for_registration(metadata, ia_access_key, ia_secret
     :param ia_secret_key:
     :return:
     """
+
     if (
         metadata["data"]["relationships"]["parent"]["data"] is None
     ):  # is root, gets own collection
@@ -305,12 +303,12 @@ async def find_subcollection_for_registration(metadata, ia_access_key, ia_secret
         parent_url = metadata["data"]["relationships"]["parent"]["links"]["related"][
             "href"
         ]
-        parent_data = await get_paginated_data(
-            f"{parent_url}?embed=parent&version=2.20&embed=children"
+        parent_data = run(
+            get_paginated_data(f"{parent_url}?embed=parent&version=2.20&embed=children")
         )
         if parent_data["data"]["embeds"]["children"]["meta"]["total"] == 1:
             # This is an only child recurse up to reach grandparent with multiple children or root
-            return await find_subcollection_for_registration(
+            return find_subcollection_for_registration(
                 parent_data, ia_access_key, ia_secret_key
             )
 
@@ -362,14 +360,16 @@ def create_subcollection(
         metadata = {}
 
     session = internetarchive.get_session(
-        config={"s3": {"access": ia_access_key, "secret": ia_secret_key}}
+        config={
+            "s3": {"access": ia_access_key, "secret": ia_secret_key},
+        },
     )
 
     collection = internetarchive.Item(session, collection_id)
     parent_collection = parent_collection or settings.OSF_COLLECTION_NAME
     try:
         collection.upload(
-            files={"dummy.txt": BytesIO(b"")},
+            files={"dummy.txt": BytesIO(b"dummy")},
             metadata={
                 "mediatype": "collection",
                 "collection": parent_collection,
@@ -383,6 +383,7 @@ def create_subcollection(
             in str(e)
             and retries
         ):
+            time.sleep(10)
             retries -= 1
             create_subcollection(
                 parent_collection,
@@ -395,7 +396,7 @@ def create_subcollection(
             raise e
 
 
-async def upload(
+def upload(
     item_name,
     tmp_dir,
     metadata,
@@ -405,10 +406,9 @@ async def upload(
     retries=3,
 ):
     ia_item = get_ia_item(item_name, ia_access_key, ia_secret_key)
-    print(ia_item.__dict__)
 
     if collection_id is None:
-        collection_id = await find_subcollection_for_registration(
+        collection_id = find_subcollection_for_registration(
             metadata, ia_access_key, ia_secret_key
         )
 
@@ -428,9 +428,9 @@ async def upload(
             in str(e)
             and retries
         ):
-            retries -= 1
             time.sleep(10)
-            await upload(
+            retries -= 1
+            upload(
                 item_name,
                 tmp_dir,
                 metadata,
@@ -445,7 +445,7 @@ async def upload(
     return ia_item
 
 
-async def main(
+def main(
     guid,
     datacite_username=settings.DATACITE_USERNAME,
     datacite_password=settings.DATACITE_PASSWORD,
@@ -455,9 +455,13 @@ async def main(
     osf_api_url=settings.OSF_API_URL,
     osf_files_url=settings.OSF_FILES_URL,
     osf_bearer_token=settings.OSF_BEARER_TOKEN,
+    id_version=settings.ID_VERSION,
+    collection_name=settings.OSF_COLLECTION_NAME,
 ):
-
     settings.OSF_BEARER_TOKEN = osf_bearer_token
+    settings.ID_VERSION = id_version
+    settings.OSF_COLLECTION_NAME = collection_name
+
     assert isinstance(
         ia_access_key, str
     ), "Internet Archive access key was not passed to pigeon"
@@ -466,27 +470,27 @@ async def main(
     ), "Internet Archive secret key not passed to pigeon"
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        await get_and_write_file_data_to_temp(
+        get_and_write_file_data_to_temp(
             f"{osf_files_url}v1/resources/{guid}/providers/osfstorage/?zip=",
             temp_dir,
             "archived_files.zip",
         )
-        await get_and_write_json_to_temp(
+        get_and_write_json_to_temp(
             f"{osf_api_url}v2/registrations/{guid}/wikis/",
             temp_dir,
             "wikis.json",
         )
-        await get_and_write_json_to_temp(
+        get_and_write_json_to_temp(
             f"{osf_api_url}v2/registrations/{guid}/logs/",
             temp_dir,
             "logs.json",
         )
-        await get_and_write_json_to_temp(
+        get_and_write_json_to_temp(
             f"{osf_api_url}v2/guids/{guid}/?embed=parent&embed=children&version=2.20",
             temp_dir,
             "registration.json",
         )
-        await get_and_write_json_to_temp(
+        get_and_write_json_to_temp(
             f"{osf_api_url}v2/registrations/{guid}/contributors/",
             temp_dir,
             "contributors.json",
@@ -504,4 +508,22 @@ async def main(
             metadata = json.loads(f.read())
 
         create_zip_data(temp_dir)
-        await upload(get_id(metadata), temp_dir, metadata, ia_access_key, ia_secret_key)
+        ia_item = upload(
+            get_id(metadata), temp_dir, metadata, ia_access_key, ia_secret_key
+        )
+
+        return ia_item.urls.details
+
+
+def run(main, *, debug=False):
+    loop = events.new_event_loop()
+    try:
+        events.set_event_loop(loop)
+        loop.set_debug(debug)
+        return loop.run_until_complete(main)
+    finally:
+        try:
+            loop.run_until_complete(loop.shutdown_asyncgens())
+        finally:
+            events.set_event_loop(None)
+            loop.close()
