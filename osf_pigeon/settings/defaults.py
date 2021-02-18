@@ -20,3 +20,5 @@ OSF_FILES_URL = "https://files.us.osf.io/"
 OSF_USER_THROTTLE_ENABLED = True
 
 ID_VERSION = "v1"
+
+DEFAULT_HMAC_SECRET = "changeme"

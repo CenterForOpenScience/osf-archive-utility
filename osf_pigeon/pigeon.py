@@ -5,7 +5,6 @@ import os
 from io import BytesIO
 from datetime import datetime
 import internetarchive
-from asyncio import events
 
 import tempfile
 import math
@@ -16,30 +15,24 @@ from typing import Tuple, Dict
 from ratelimit import sleep_and_retry
 from ratelimit.exception import RateLimitException
 from datacite import DataCiteMDSClient
+from datacite.errors import DataCiteNotFoundError
 
 from osf_pigeon import settings
 import zipfile
 import bagit
 
 
-def get_id(metadata, collection=False):
+def get_id(guid, collection=False):
     """
     Naming scheme for osf items
-    `{django app name}-{type}-{guid/_id}-{date registered if registration}-{version number}`
-
-    date registered uses the format: %Y-%m-%dT%H-%M-%S.%f to avoid illegal char `:`
+    `{django app name}-{type}-{guid/_id}-{version number}`
 
     Collections have the prefix, `collection-` for registrations
 
     :param metadata:
     :return:
     """
-    date = datetime.strptime(
-        metadata["data"]["attributes"]["date_registered"], "%Y-%m-%dT%H:%M:%S.%fZ"
-    ).strftime("%Y-%m-%dT%H-%M-%S.%f")
-
-    item_id = f'osf-{metadata["data"]["type"]}-{metadata["data"]["id"]}-{date}-' \
-              f'{settings.ID_VERSION}'
+    item_id = f"osf-registrations-{guid}-{settings.ID_VERSION}"
     if collection:
         return f"collection-{item_id}"
     return item_id
@@ -48,9 +41,7 @@ def get_id(metadata, collection=False):
 def get_provider_id(metadata):
     """
     Naming scheme for osf items
-    `{django app name}-{type}-{guid/_id}-{date registered if registration}-{version number}`
-
-    date registered uses the format: %Y-%m-%dT%H-%M-%S.%f to avoid illegal char `:`
+    `{django app name}-{type}-{guid/_id}-{version number}`
 
     Collections have the prefix, `collection-` in the current scheme providers are always
     collections.
@@ -71,7 +62,7 @@ def get_and_write_file_data_to_temp(url, temp_dir, dir_name):
 
 
 def get_and_write_json_to_temp(url, temp_dir, filename, parse_json=None):
-    pages = run(get_paginated_data(url, parse_json))
+    pages = asyncio.run(get_paginated_data(url, parse_json))
     with open(os.path.join(temp_dir, filename), "w") as fp:
         fp.write(json.dumps(pages))
 
@@ -162,7 +153,11 @@ def get_datacite_metadata(
         identifier["attributes"]["value"]
         for identifier in data
         if identifier["attributes"]["category"] == "doi"
-    ][0]
+    ]
+    if not doi:
+        raise DataCiteNotFoundError("Datacite DOI not found on OSF DB")
+    else:
+        doi = doi[0]
 
     client = DataCiteMDSClient(
         url=settings.DATACITE_URL,
@@ -263,18 +258,17 @@ async def get_paginated_data(url, parse_json=None):
         return data
 
 
-def get_ia_item(guid, ia_access_key, ia_secret_key):
+def get_ia_item(guid):
     session = internetarchive.get_session(
         config={
-            "s3": {"access": ia_access_key, "secret": ia_secret_key},
+            "s3": {"access": settings.IA_ACCESS_KEY, "secret": settings.IA_SECRET_KEY},
         },
     )
     return session.get_item(guid)
 
 
-def sync_metadata(item_name, metadata, ia_access_key, ia_secret_key):
-    ia_item = get_ia_item(item_name, ia_access_key, ia_secret_key)
-
+def sync_metadata(item_name, metadata):
+    ia_item = get_ia_item(item_name)
     if metadata.get("moderation_state") == "withdrawn":  # withdrawn == not searchable
         metadata["noindex"] = True
 
@@ -296,7 +290,7 @@ def find_subcollection_for_registration(metadata, ia_access_key, ia_secret_key):
     if (
         metadata["data"]["relationships"]["parent"]["data"] is None
     ):  # is root, gets own collection
-        root_collection_id = get_id(metadata, collection=True)
+        root_collection_id = get_id(metadata["data"]["id"], collection=True)
         create_subcollection(
             root_collection_id,
             ia_access_key,
@@ -311,7 +305,7 @@ def find_subcollection_for_registration(metadata, ia_access_key, ia_secret_key):
         parent_url = metadata["data"]["relationships"]["parent"]["links"]["related"][
             "href"
         ]
-        parent_data = run(
+        parent_data = asyncio.run(
             get_paginated_data(f"{parent_url}?embed=parent&version=2.20&embed=children")
         )
         if parent_data["data"]["embeds"]["children"]["meta"]["total"] == 1:
@@ -321,7 +315,7 @@ def find_subcollection_for_registration(metadata, ia_access_key, ia_secret_key):
             )
 
         else:
-            parent_collection_id = get_id(parent_data, collection=True)
+            parent_collection_id = get_id(parent_data["data"]["id"], collection=True)
             errors = parent_data["data"]["embeds"]["parent"].get("errors")
             if errors and errors[0]["detail"] == "Not found.":
                 create_subcollection(
@@ -341,9 +335,11 @@ def find_subcollection_for_registration(metadata, ia_access_key, ia_secret_key):
                     metadata={
                         "title": f'Collection for {parent_data["data"]["attributes"]["title"]}'
                     },
-                    parent_collection=get_id(parent_data, collection=True),
+                    parent_collection=get_id(
+                        parent_data["data"]["id"], collection=True
+                    ),
                 )
-            return get_id(parent_data, collection=True)
+            return get_id(parent_data["data"]["id"], collection=True)
 
 
 def create_subcollection(
@@ -413,8 +409,7 @@ def upload(
     collection_id=None,
     retries=3,
 ):
-    ia_item = get_ia_item(item_name, ia_access_key, ia_secret_key)
-
+    ia_item = get_ia_item(item_name)
     if collection_id is None:
         collection_id = find_subcollection_for_registration(
             metadata, ia_access_key, ia_secret_key
@@ -437,7 +432,6 @@ def upload(
             in str(e)
             and retries
         ):
-            time.sleep(10)
             retries -= 1
             upload(
                 item_name,
@@ -518,24 +512,14 @@ def main(
 
         with open(os.path.join(temp_dir, "data", "registration.json"), "r") as f:
             metadata = json.loads(f.read())
-
         create_zip_data(temp_dir)
+
         ia_item = upload(
-            get_id(metadata), temp_dir, metadata, ia_access_key, ia_secret_key
+            get_id(metadata["data"]["id"]),
+            temp_dir,
+            metadata,
+            ia_access_key,
+            ia_secret_key,
         )
 
-        return ia_item.urls.details
-
-
-def run(main, *, debug=False):
-    loop = events.new_event_loop()
-    try:
-        events.set_event_loop(loop)
-        loop.set_debug(debug)
-        return loop.run_until_complete(main)
-    finally:
-        try:
-            loop.run_until_complete(loop.shutdown_asyncgens())
-        finally:
-            events.set_event_loop(None)
-            loop.close()
+        return guid, ia_item.urls.details

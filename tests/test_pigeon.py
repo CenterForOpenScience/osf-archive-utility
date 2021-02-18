@@ -307,7 +307,7 @@ class TestMetadata:
             "date": "2017-12-20",
             "contributor": "Center for Open Science",
         }
-        sync_metadata(guid, metadata, "notrealaccesskey", "notrealsecretkey")
+        sync_metadata(guid, metadata)
         mock_ia_client.session.get_item.assert_called_with("guid0")
         mock_ia_client.item.modify_metadata.assert_called_with(metadata)
 
@@ -320,7 +320,7 @@ class TestMetadata:
             "is_public": False,
             "moderation_state": "withdrawn",
         }
-        sync_metadata(guid, metadata.copy(), "notrealaccesskey", "notrealsecretkey")
+        sync_metadata(guid, metadata.copy())
         mock_ia_client.session.get_item.assert_called_with("guid0")
 
         metadata["noindex"] = True
@@ -503,7 +503,7 @@ class TestUpload:
         mock_ia_client.item.upload.assert_called_with(
             {"bag.zip": mock.ANY},
             metadata={
-                "collection": f"collection-osf-registrations-pkdm6-2021-02-08T23-09-41.562456-{ID_VERSION}",
+                "collection": f"collection-osf-registrations-pkdm6-{ID_VERSION}",
                 "title": "Root Registration with no children",
                 "description": "This is a fake registration to test how to structure our project.",
                 "date_created": "2021-02-08",
@@ -533,7 +533,7 @@ class TestUpload:
         mock_ia_client.item.upload.assert_called_with(
             {"bag.zip": mock.ANY},
             metadata={
-                "collection": f"collection-osf-registrations-pkdm6-2021-02-08T23-09-41.562456-{ID_VERSION}",
+                "collection": f"collection-osf-registrations-pkdm6-{ID_VERSION}",
                 "title": "Root Registration with no children",
                 "description": "This is a fake registration to test how to structure our project.",
                 "date_created": "2021-02-08",

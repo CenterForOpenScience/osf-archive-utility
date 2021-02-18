@@ -1,83 +1,53 @@
-import argparse
-from osf_pigeon.pigeon import main
+import os
+import sys
+import requests
+from osf_pigeon import settings
+from sanic import Sanic
+from sanic.response import json
+from osf_pigeon.pigeon import main, sync_metadata, get_id
 
-from osf_pigeon.settings import (
-    DATACITE_PASSWORD,
-    DATACITE_USERNAME,
-    IA_ACCESS_KEY,
-    IA_SECRET_KEY,
-    OSF_BEARER_TOKEN,
-    ID_VERSION,
-    DATACITE_URL
-)
+from concurrent.futures import ThreadPoolExecutor
+from sanic.log import logger
+
+
+app = Sanic("osf_pigeon")
+pigeon_jobs = ThreadPoolExecutor(max_workers=3, thread_name_prefix="pigeon_jobs")
+
+
+def task_done(future):
+    exception = None
+    if future._exception:
+        exception = future._exception
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        logger.info(exc_type, fname, exc_tb.tb_lineno)
+        exception = str(exception)
+    if future._result:
+        guid, url = future._result
+        requests.post(f"{settings.OSF_API_URL}_/ia/{guid}/done/", data={"IA_url": url})
+
+    logger.info(f"DONE: {future._result}, {exception}")
+
+
+@app.route("/")
+async def index(request):
+    return json({"🐦": "👍"})
+
+
+@app.route("/archive/<guid>", methods=["GET"])
+async def archive(request, guid):
+    future = pigeon_jobs.submit(main, guid)
+    future.add_done_callback(task_done)
+    return json({guid: future._state})
+
+
+@app.route("/metadata/<guid>", methods=["POST"])
+async def metadata(request, guid):
+    item_name = get_id(guid)
+    future = pigeon_jobs.submit(sync_metadata, item_name, request.json)
+    future.add_done_callback(task_done)
+    return json({guid: future._state})
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "-g",
-        "--guid",
-        help="This is the GUID of the target node on the OSF",
-        required=True,
-    )
-    parser.add_argument(
-        "-d",
-        "--datacite_password",
-        help="This is the password for using datacite's api",
-        required=False,
-    )
-    parser.add_argument(
-        "-u",
-        "--datacite_username",
-        help="This is the username for using datacite's api",
-        required=False,
-    )
-    parser.add_argument(
-        "-a",
-        "--ia_access_key",
-        help="This is the access key for using Internet Archive's api",
-        required=False,
-    )
-    parser.add_argument(
-        "-s",
-        "--ia_secret_key",
-        help="This is the secret key for using Internet Archive's api",
-        required=False,
-    )
-    parser.add_argument(
-        "-t",
-        "--osf_bearer_token",
-        help="This is the osf bear token for using OSF's api",
-        required=False,
-    )
-    parser.add_argument(
-        "-v",
-        "--id_version",
-        help="This is the osf bear token for using OSF's api",
-        required=False,
-    )
-    parser.add_argument(
-        "-d",
-        "--datacite_url",
-        help="This is the url for datacite",
-        required=False,
-    )
-    args = parser.parse_args()
-    guid = args.guid
-    datacite_password = args.datacite_password
-    datacite_username = args.datacite_username
-    ia_access_key = args.ia_access_key
-    ia_secret_key = args.ia_secret_key
-    osf_bearer_token = args.osf_bearer_token
-    id_version = args.id_version
-    datacite_url = args.datacite_url
-    main(
-        guid,
-        datacite_password=datacite_password or DATACITE_PASSWORD,
-        datacite_username=datacite_username or DATACITE_USERNAME,
-        ia_access_key=ia_access_key or IA_ACCESS_KEY,
-        ia_secret_key=ia_secret_key or IA_SECRET_KEY,
-        osf_bearer_token=osf_bearer_token or OSF_BEARER_TOKEN,
-        id_version=id_version or ID_VERSION,
-        datacite_url=datacite_url or DATACITE_URL,
-    )
+    app.run(host="0.0.0.0", port=8001, auto_reload=True, debug=True)
