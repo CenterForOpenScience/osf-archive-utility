@@ -1,5 +1,4 @@
 import argparse
-import asyncio
 from osf_pigeon.pigeon import main
 
 from osf_pigeon.settings import (
@@ -9,6 +8,7 @@ from osf_pigeon.settings import (
     IA_SECRET_KEY,
     OSF_BEARER_TOKEN,
     ID_VERSION,
+    DATACITE_URL
 )
 
 
@@ -56,6 +56,12 @@ if __name__ == "__main__":
         help="This is the osf bear token for using OSF's api",
         required=False,
     )
+    parser.add_argument(
+        "-d",
+        "--datacite_url",
+        help="This is the url for datacite",
+        required=False,
+    )
     args = parser.parse_args()
     guid = args.guid
     datacite_password = args.datacite_password
@@ -64,6 +70,7 @@ if __name__ == "__main__":
     ia_secret_key = args.ia_secret_key
     osf_bearer_token = args.osf_bearer_token
     id_version = args.id_version
+    datacite_url = args.datacite_url
     main(
         guid,
         datacite_password=datacite_password or DATACITE_PASSWORD,
@@ -72,4 +79,5 @@ if __name__ == "__main__":
         ia_secret_key=ia_secret_key or IA_SECRET_KEY,
         osf_bearer_token=osf_bearer_token or OSF_BEARER_TOKEN,
         id_version=id_version or ID_VERSION,
+        datacite_url=datacite_url or DATACITE_URL,
     )

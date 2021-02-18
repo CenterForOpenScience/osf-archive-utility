@@ -204,11 +204,21 @@ class TestBagAndTag:
     def guid(self):
         return "guid0"
 
-    def test_bag_and_tag(self, guid, mock_datacite):
+    @pytest.fixture
+    def identifiers_json(self):
+        with open(os.path.join(HERE, "fixtures/node-identifiers.json"), "rb") as fp:
+            return fp.read()
+
+    def test_bag_and_tag(self, guid, mock_datacite, identifiers_json):
+
         with tempfile.TemporaryDirectory() as temp_dir:
             with mock.patch("bagit.Bag") as mock_bag:
                 bag_and_tag(
-                    temp_dir, guid, "test datcite password", "test datcite username"
+                    temp_dir,
+                    guid,
+                    settings.OSF_API_URL,
+                    "test datcite password",
+                    "test datcite username",
                 )
                 mock_bag.assert_called_with(temp_dir)
 

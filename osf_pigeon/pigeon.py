@@ -38,7 +38,8 @@ def get_id(metadata, collection=False):
         metadata["data"]["attributes"]["date_registered"], "%Y-%m-%dT%H:%M:%S.%fZ"
     ).strftime("%Y-%m-%dT%H-%M-%S.%f")
 
-    item_id = f'osf-{metadata["data"]["type"]}-{metadata["data"]["id"]}-{date}-{settings.ID_VERSION}'
+    item_id = f'osf-{metadata["data"]["type"]}-{metadata["data"]["id"]}-{date}-' \
+              f'{settings.ID_VERSION}'
     if collection:
         return f"collection-{item_id}"
     return item_id
@@ -78,14 +79,14 @@ def get_and_write_json_to_temp(url, temp_dir, filename, parse_json=None):
 def bag_and_tag(
     temp_dir,
     guid,
+    osf_api_url,
     datacite_username=settings.DATACITE_USERNAME,
     datacite_password=settings.DATACITE_PASSWORD,
     datacite_prefix=settings.DATACITE_PREFIX,
 ):
 
-    doi = build_doi(guid)
     xml_metadata = get_datacite_metadata(
-        doi, datacite_username, datacite_password, datacite_prefix
+        guid, osf_api_url, datacite_username, datacite_password, datacite_prefix
     )
 
     with open(os.path.join(temp_dir, "datacite.xml"), "w") as fp:
@@ -148,14 +149,21 @@ def modify_metadata_with_retry(ia_item, metadata, retries=2, sleep_time=60):
             raise e
 
 
-def build_doi(guid):
-    return settings.DOI_FORMAT.format(prefix=settings.DATACITE_PREFIX, guid=guid)
-
-
-def get_datacite_metadata(doi, datacite_username, datacite_password, datacite_prefix):
+def get_datacite_metadata(
+    guid, osf_api_url, datacite_username, datacite_password, datacite_prefix
+):
     assert isinstance(datacite_password, str), "Datacite password not passed to pigeon"
     assert isinstance(datacite_username, str), "Datacite username not passed to pigeon"
     assert isinstance(datacite_prefix, str), "Datacite prefix not passed to pigeon"
+    data = requests.get(f"{osf_api_url}v2/registrations/{guid}/identifiers/").json()[
+        "data"
+    ]
+    doi = [
+        identifier["attributes"]["value"]
+        for identifier in data
+        if identifier["attributes"]["category"] == "doi"
+    ][0]
+
     client = DataCiteMDSClient(
         url=settings.DATACITE_URL,
         username=datacite_username,
@@ -347,8 +355,8 @@ def create_subcollection(
     retries=3,
 ):
     """
-    The expected sub-collection hierarchy is as follows top-level OSF collection -> provider collection -> collection for nodes
-    with multiple children -> all only child nodes
+    The expected sub-collection hierarchy is as follows top-level OSF collection -> provider
+    collection -> collection for nodes with multiple children -> all only child nodes
 
     :param metadata: dict should attributes for the provider's sub-collection is being created
     :param parent_collection: str the name of the  sub-collection's parent
@@ -422,7 +430,8 @@ def upload(
             secret_key=ia_secret_key,
         )
     except requests.exceptions.HTTPError as e:
-        # You don't have permission to join because a collection because it might not have been created yet.
+        # You don't have permission to join because a collection because it might not have been
+        # created yet.
         if (
             "Access Denied - You lack sufficient privileges to write to those collections"
             in str(e)
@@ -457,10 +466,12 @@ def main(
     osf_bearer_token=settings.OSF_BEARER_TOKEN,
     id_version=settings.ID_VERSION,
     collection_name=settings.OSF_COLLECTION_NAME,
+    datacite_url=settings.DATACITE_URL,
 ):
     settings.OSF_BEARER_TOKEN = osf_bearer_token
     settings.ID_VERSION = id_version
     settings.OSF_COLLECTION_NAME = collection_name
+    settings.DATACITE_URL = datacite_url
 
     assert isinstance(
         ia_access_key, str
@@ -499,6 +510,7 @@ def main(
         bag_and_tag(
             temp_dir,
             guid,
+            osf_api_url,
             datacite_username=datacite_username,
             datacite_password=datacite_password,
             datacite_prefix=datacite_prefix,
