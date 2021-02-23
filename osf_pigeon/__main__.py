@@ -1,7 +1,7 @@
+import argparse
 import os
 import sys
 import requests
-from osf_pigeon import settings
 from sanic import Sanic
 from sanic.response import json
 from osf_pigeon.pigeon import main, sync_metadata, get_id
@@ -34,7 +34,7 @@ async def index(request):
     return json({"🐦": "👍"})
 
 
-@app.route("/archive/<guid>", methods=["GET"])
+@app.route("/archive/<guid>", methods=["GET", "POST"])
 async def archive(request, guid):
     future = pigeon_jobs.submit(main, guid)
     future.add_done_callback(task_done)
@@ -49,5 +49,20 @@ async def metadata(request, guid):
     return json({guid: future._state})
 
 
+parser = argparse.ArgumentParser(description="Set the environment to run OSF pigeon in.")
+parser.add_argument(
+    "--env", dest="env", help="what environment are you running this for"
+)
+
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8001, auto_reload=True, debug=True)
+    args = parser.parse_args()
+    if args.env:
+        os.environ["ENV"] = args.env
+
+    from osf_pigeon import settings
+
+    if args.env == "production":
+        app.run(host=settings.HOST, port=settings.PORT)
+    else:
+        app.run(host=settings.HOST, port=settings.PORT, auto_reload=True, debug=True)

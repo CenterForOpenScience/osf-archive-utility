@@ -1,5 +1,4 @@
 import os
-import asyncio
 from io import BytesIO
 import json
 import pytest
@@ -404,7 +403,7 @@ class TestSubcollections:
         mock_osf_api.add(
             responses.GET,
             "https://api.osf.io/v2/registrations/mdn5w/?"
-            "embed=children&embed=parent&version=2.20",
+            "embed=children&embed=parent&version=2.20&embed=parent",
             body=parent_with_children,
             status=200,
         )
@@ -435,14 +434,14 @@ class TestSubcollections:
         mock_osf_api.add(
             responses.GET,
             "https://api.osf.io/v2/registrations/mdn5w/"
-            "?embed=children&embed=parent&version=2.20",
+            "?embed=children&embed=parent&version=2.20&embed=parent",
             body=parent_with_one_child,
             status=200,
         )
         mock_osf_api.add(
             responses.GET,
             "https://api.osf.io/v2/registrations/nope1/"
-            "?embed=children&embed=parent&version=2.20",
+            "?embed=children&embed=parent&version=2.20&embed=parent",
             body=parent_with_children,
             status=200,
         )
@@ -472,13 +471,6 @@ class TestUpload:
     @pytest.fixture
     def zip_data(self):
         return BytesIO(b"Clyde Simmons is underrated")
-
-    @pytest.fixture
-    def temp_dir(self, zip_data):
-        with tempfile.TemporaryDirectory() as temp_dir:
-            with open(temp_dir, "wb") as fp:
-                fp.write(zip_data)
-            yield temp_dir
 
     @pytest.fixture
     def metadata(self):

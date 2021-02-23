@@ -1,0 +1,12 @@
+services:
+
+  pigeon:
+    build: .
+    restart: unless-stopped
+    ports:
+      - 8001:8001
+    env_file:
+      - .docker-compose.env
+    stdin_open: true
+    volumes:
+      - /srv

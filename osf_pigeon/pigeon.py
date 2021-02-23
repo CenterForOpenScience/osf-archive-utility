@@ -5,6 +5,7 @@ import os
 from io import BytesIO
 from datetime import datetime
 import internetarchive
+from asyncio import events
 
 import tempfile
 import math
@@ -62,7 +63,7 @@ def get_and_write_file_data_to_temp(url, temp_dir, dir_name):
 
 
 def get_and_write_json_to_temp(url, temp_dir, filename, parse_json=None):
-    pages = asyncio.run(get_paginated_data(url, parse_json))
+    pages = run(get_paginated_data(url, parse_json))
     with open(os.path.join(temp_dir, filename), "w") as fp:
         fp.write(json.dumps(pages))
 
@@ -146,9 +147,8 @@ def get_datacite_metadata(
     assert isinstance(datacite_password, str), "Datacite password not passed to pigeon"
     assert isinstance(datacite_username, str), "Datacite username not passed to pigeon"
     assert isinstance(datacite_prefix, str), "Datacite prefix not passed to pigeon"
-    data = requests.get(f"{osf_api_url}v2/registrations/{guid}/identifiers/").json()[
-        "data"
-    ]
+    data = get_with_retry(f"{osf_api_url}v2/registrations/{guid}/identifiers/").json()['data']
+
     doi = [
         identifier["attributes"]["value"]
         for identifier in data
@@ -180,7 +180,7 @@ def get_with_retry(
         assert (
             settings.OSF_BEARER_TOKEN
         ), "must have OSF_BEARER_TOKEN set to disable the api user throttle of the OSF"
-        headers["Authorization"] = settings.OSF_BEARER_TOKEN
+        headers["Authorization"] = f'Bearer {settings.OSF_BEARER_TOKEN}'
 
     resp = requests.get(url, headers=headers)
     if resp.status_code in retry_on:
@@ -305,8 +305,11 @@ def find_subcollection_for_registration(metadata, ia_access_key, ia_secret_key):
         parent_url = metadata["data"]["relationships"]["parent"]["links"]["related"][
             "href"
         ]
-        parent_data = asyncio.run(
-            get_paginated_data(f"{parent_url}?embed=parent&version=2.20&embed=children")
+        parent_data = run(
+            get_paginated_data(
+                f"{parent_url}"
+                f"?embed=parent&version=2.20&embed=children&embed=parent"
+            )
         )
         if parent_data["data"]["embeds"]["children"]["meta"]["total"] == 1:
             # This is an only child recurse up to reach grandparent with multiple children or root
@@ -523,3 +526,17 @@ def main(
         )
 
         return guid, ia_item.urls.details
+
+
+def run(main, *, debug=False):
+    loop = events.new_event_loop()
+    try:
+        events.set_event_loop(loop)
+        loop.set_debug(debug)
+        return loop.run_until_complete(main)
+    finally:
+        try:
+            loop.run_until_complete(loop.shutdown_asyncgens())
+        finally:
+            events.set_event_loop(None)
+            loop.close()
