@@ -1,13 +1,22 @@
-FROM sanicframework/sanic:LTS
+FROM python:3.7-alpine as base
 
-COPY . /srv
-WORKDIR /srv
+# Setup env
+ENV LANG C.UTF-8
+ENV LC_ALL C.UTF-8
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONFAULTHANDLER 1
 
-RUN apk add libxml2
-RUN apk add libxslt-dev
+# Install requirements
+COPY requirements.txt .
+RUN apk add --no-cache --virtual .build-deps \
+      gcc \
+      musl-dev \
+      libxslt-dev \
+      libxml2 \
+  && pip install -r requirements.txt \
+  && apk del .build-deps
 
-RUN pip3 install -r /srv/requirements.txt
+# Install application into container
+COPY . .
 
-EXPOSE 8001
-
-ENTRYPOINT ["python3", "-m", "osf_pigeon"]
+ENTRYPOINT ["python", "-m", "osf_pigeon"]

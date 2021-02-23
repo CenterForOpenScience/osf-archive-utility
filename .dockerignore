@@ -1,0 +1,6 @@
+# Ignore Everything
+**
+
+# Except for what's necessary
+!requirements.txt
+!osf_pigeon/
