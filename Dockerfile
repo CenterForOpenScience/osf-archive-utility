@@ -13,6 +13,6 @@ RUN apt-get install bash
 
 RUN pip3 install -r /srv/requirements.txt
 
-EXPOSE 8001
+EXPOSE 2020
 
 ENTRYPOINT ["python3", "-m", "osf_pigeon"]

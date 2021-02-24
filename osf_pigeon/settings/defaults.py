@@ -16,7 +16,7 @@ HOST = "0.0.0.0"
 
 ID_VERSION = "v1"
 
-PORT = 8001
+PORT = 2020
 
 ENV = {
     "production": {
