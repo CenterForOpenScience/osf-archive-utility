@@ -155,7 +155,7 @@ def get_datacite_metadata(
         if identifier["attributes"]["category"] == "doi"
     ]
     if not doi:
-        raise DataCiteNotFoundError("Datacite DOI not found on OSF DB")
+        raise DataCiteNotFoundError(f"Datacite DOI not found for registration {guid} on OSF server.")
     else:
         doi = doi[0]
 
@@ -165,7 +165,10 @@ def get_datacite_metadata(
         password=datacite_password,
         prefix=datacite_prefix,
     )
-    return client.metadata_get(doi)
+    try:
+        return client.metadata_get(doi)
+    except DataCiteNotFoundError:
+        raise DataCiteNotFoundError(f"Datacite DOI not found for registration {guid} on Datacite server.")
 
 
 @sleep_and_retry
@@ -194,7 +197,7 @@ def get_with_retry(
 
 
 async def get_pages(url, page, result={}, parse_json=None):
-    url = f"{url}?page={page}"
+    url = f"{url}?page={page}&page={page}"
     resp = get_with_retry(url, retry_on=(429,))
 
     result[page] = resp.json()["data"]
@@ -478,6 +481,17 @@ def main(
     ), "Internet Archive secret key not passed to pigeon"
 
     with tempfile.TemporaryDirectory() as temp_dir:
+        get_and_write_json_to_temp(
+            f"{osf_api_url}v2/guids/{guid}/?embed=parent&embed=children&version=2.20",
+            temp_dir,
+            "registration.json",
+        )
+        with open(os.path.join(temp_dir, "registration.json"), "r") as f:
+            metadata = json.loads(f.read())
+
+        if metadata['data']['attributes']['withdrawn']:
+            raise PermissionError(f'Registration {guid} is withdrawn')
+
         get_and_write_file_data_to_temp(
             f"{osf_files_url}v1/resources/{guid}/providers/osfstorage/?zip=",
             temp_dir,
@@ -494,11 +508,6 @@ def main(
             "logs.json",
         )
         get_and_write_json_to_temp(
-            f"{osf_api_url}v2/guids/{guid}/?embed=parent&embed=children&version=2.20",
-            temp_dir,
-            "registration.json",
-        )
-        get_and_write_json_to_temp(
             f"{osf_api_url}v2/registrations/{guid}/contributors/",
             temp_dir,
             "contributors.json",
@@ -513,8 +522,6 @@ def main(
             datacite_prefix=datacite_prefix,
         )
 
-        with open(os.path.join(temp_dir, "data", "registration.json"), "r") as f:
-            metadata = json.loads(f.read())
         create_zip_data(temp_dir)
 
         ia_item = upload(

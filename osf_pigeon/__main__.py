@@ -11,22 +11,20 @@ from sanic.log import logger
 
 
 app = Sanic("osf_pigeon")
-pigeon_jobs = ThreadPoolExecutor(max_workers=3, thread_name_prefix="pigeon_jobs")
+pigeon_jobs = ThreadPoolExecutor(max_workers=2, thread_name_prefix="pigeon_jobs")
 
 
 def task_done(future):
     exception = None
     if future._exception:
         exception = future._exception
-        exc_type, exc_obj, exc_tb = sys.exc_info()
-        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-        logger.info(exc_type, fname, exc_tb.tb_lineno)
         exception = str(exception)
+    resp = None
     if future._result:
         guid, url = future._result
-        requests.post(f"{settings.OSF_API_URL}_/ia/{guid}/done/", data={"IA_url": url})
+        resp = requests.post(f"{settings.OSF_API_URL}_/ia/{guid}/done/", json={"IA_url": url})
 
-    logger.info(f"DONE: {future._result}, {exception}")
+    logger.info(f"DONE: Result:{future._result}, Exception:{exception} Response:{resp}")
 
 
 @app.route("/")
