@@ -16,4 +16,4 @@ except ImportError:
 if os.environ.get("ENV"):
     locals().update(ENV[os.environ.get("ENV")])
 else:
-    locals().update(ENV['local'])
+    locals().update(ENV["local"])

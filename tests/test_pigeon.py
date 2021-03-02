@@ -18,6 +18,7 @@ from osf_pigeon.pigeon import (
     sync_metadata,
     find_subcollection_for_registration,
     upload,
+    get_datacite_metadata,
 )
 import internetarchive
 import zipfile
@@ -203,23 +204,33 @@ class TestBagAndTag:
     def guid(self):
         return "guid0"
 
+    def test_bag_and_tag(self, guid):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with mock.patch("bagit.Bag") as mock_bag:
+                bag_and_tag(temp_dir)
+                mock_bag.assert_called_with(temp_dir)
+
+
+class TestDatacite:
+    @pytest.fixture
+    def guid(self):
+        return "guid0"
+
     @pytest.fixture
     def identifiers_json(self):
         with open(os.path.join(HERE, "fixtures/node-identifiers.json"), "rb") as fp:
             return fp.read()
 
-    def test_bag_and_tag(self, guid, mock_datacite, identifiers_json):
+    def test_get_datacite_metadata(self, guid, mock_datacite, identifiers_json):
+        xml = get_datacite_metadata(
+            guid,
+            osf_api_url=settings.OSF_API_URL,
+            datacite_username=settings.DATACITE_USERNAME,
+            datacite_password=settings.DATACITE_PASSWORD,
+            datacite_prefix=settings.DATACITE_PREFIX,
+        )
 
-        with tempfile.TemporaryDirectory() as temp_dir:
-            with mock.patch("bagit.Bag") as mock_bag:
-                bag_and_tag(
-                    temp_dir,
-                    guid,
-                    settings.OSF_API_URL,
-                    "test datcite password",
-                    "test datcite username",
-                )
-                mock_bag.assert_called_with(temp_dir)
+        assert xml == "pretend this is XML."
 
 
 class TestCreateZipData:

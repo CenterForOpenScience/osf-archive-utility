@@ -68,21 +68,7 @@ def get_and_write_json_to_temp(url, temp_dir, filename, parse_json=None):
         fp.write(json.dumps(pages))
 
 
-def bag_and_tag(
-    temp_dir,
-    guid,
-    osf_api_url,
-    datacite_username=settings.DATACITE_USERNAME,
-    datacite_password=settings.DATACITE_PASSWORD,
-    datacite_prefix=settings.DATACITE_PREFIX,
-):
-
-    xml_metadata = get_datacite_metadata(
-        guid, osf_api_url, datacite_username, datacite_password, datacite_prefix
-    )
-
-    with open(os.path.join(temp_dir, "datacite.xml"), "w") as fp:
-        fp.write(xml_metadata)
+def bag_and_tag(temp_dir):
 
     bagit.make_bag(temp_dir)
     bag = bagit.Bag(temp_dir)
@@ -147,7 +133,9 @@ def get_datacite_metadata(
     assert isinstance(datacite_password, str), "Datacite password not passed to pigeon"
     assert isinstance(datacite_username, str), "Datacite username not passed to pigeon"
     assert isinstance(datacite_prefix, str), "Datacite prefix not passed to pigeon"
-    data = get_with_retry(f"{osf_api_url}v2/registrations/{guid}/identifiers/").json()['data']
+    data = get_with_retry(f"{osf_api_url}v2/registrations/{guid}/identifiers/").json()[
+        "data"
+    ]
 
     doi = [
         identifier["attributes"]["value"]
@@ -155,7 +143,9 @@ def get_datacite_metadata(
         if identifier["attributes"]["category"] == "doi"
     ]
     if not doi:
-        raise DataCiteNotFoundError(f"Datacite DOI not found for registration {guid} on OSF server.")
+        raise DataCiteNotFoundError(
+            f"Datacite DOI not found for registration {guid} on OSF server."
+        )
     else:
         doi = doi[0]
 
@@ -168,7 +158,9 @@ def get_datacite_metadata(
     try:
         return client.metadata_get(doi)
     except DataCiteNotFoundError:
-        raise DataCiteNotFoundError(f"Datacite DOI not found for registration {guid} on Datacite server.")
+        raise DataCiteNotFoundError(
+            f"Datacite DOI not found for registration {guid} on Datacite server."
+        )
 
 
 @sleep_and_retry
@@ -183,7 +175,7 @@ def get_with_retry(
         assert (
             settings.OSF_BEARER_TOKEN
         ), "must have OSF_BEARER_TOKEN set to disable the api user throttle of the OSF"
-        headers["Authorization"] = f'Bearer {settings.OSF_BEARER_TOKEN}'
+        headers["Authorization"] = f"Bearer {settings.OSF_BEARER_TOKEN}"
 
     resp = requests.get(url, headers=headers)
     if resp.status_code in retry_on:
@@ -403,7 +395,9 @@ def create_subcollection(
                 retries=retries,
             )
         else:
-            raise e
+            raise requests.exceptions.Timeout(
+                f"{collection_id} timed out uploading collection to {parent_collection}"
+            )
 
 
 def upload(
@@ -422,7 +416,6 @@ def upload(
         )
 
     ia_metadata = format_metadata_for_ia_item(metadata)
-
     try:
         ia_item.upload(
             {"bag.zip": os.path.join(tmp_dir, "bag.zip")},
@@ -438,6 +431,7 @@ def upload(
             in str(e)
             and retries
         ):
+            time.sleep(30)
             retries -= 1
             upload(
                 item_name,
@@ -449,7 +443,9 @@ def upload(
                 retries=retries,
             )
         else:
-            raise e
+            raise requests.exceptions.Timeout(
+                f"{item_name} timed out uploading item to collection {collection_id}"
+            )
 
     return ia_item
 
@@ -481,6 +477,13 @@ def main(
     ), "Internet Archive secret key not passed to pigeon"
 
     with tempfile.TemporaryDirectory() as temp_dir:
+        xml_metadata = get_datacite_metadata(
+            guid, osf_api_url, datacite_username, datacite_password, datacite_prefix
+        )
+
+        with open(os.path.join(temp_dir, "datacite.xml"), "w") as fp:
+            fp.write(xml_metadata)
+
         get_and_write_json_to_temp(
             f"{osf_api_url}v2/guids/{guid}/?embed=parent&embed=children&version=2.20",
             temp_dir,
@@ -489,14 +492,18 @@ def main(
         with open(os.path.join(temp_dir, "registration.json"), "r") as f:
             metadata = json.loads(f.read())
 
-        if metadata['data']['attributes']['withdrawn']:
-            raise PermissionError(f'Registration {guid} is withdrawn')
+        if metadata["data"]["attributes"]["withdrawn"]:
+            raise PermissionError(f"Registration {guid} is withdrawn")
 
-        get_and_write_file_data_to_temp(
-            f"{osf_files_url}v1/resources/{guid}/providers/osfstorage/?zip=",
-            temp_dir,
-            "archived_files.zip",
-        )
+        try:
+            get_and_write_file_data_to_temp(
+                f"{osf_files_url}v1/resources/{guid}/providers/osfstorage/?zip=",
+                temp_dir,
+                "archived_files.zip",
+            )
+        except requests.exceptions.ChunkedEncodingError:
+            raise Exception(f"OSF file service is temporally unavailable for {guid}")
+
         get_and_write_json_to_temp(
             f"{osf_api_url}v2/registrations/{guid}/wikis/",
             temp_dir,
@@ -513,15 +520,7 @@ def main(
             "contributors.json",
             parse_json=get_contributors,
         )
-        bag_and_tag(
-            temp_dir,
-            guid,
-            osf_api_url,
-            datacite_username=datacite_username,
-            datacite_password=datacite_password,
-            datacite_prefix=datacite_prefix,
-        )
-
+        bag_and_tag(temp_dir)
         create_zip_data(temp_dir)
 
         ia_item = upload(

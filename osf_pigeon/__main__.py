@@ -1,6 +1,5 @@
 import argparse
 import os
-import sys
 import requests
 from sanic import Sanic
 from sanic.response import json
@@ -9,22 +8,21 @@ from osf_pigeon.pigeon import main, sync_metadata, get_id
 from concurrent.futures import ThreadPoolExecutor
 from sanic.log import logger
 
-
 app = Sanic("osf_pigeon")
-pigeon_jobs = ThreadPoolExecutor(max_workers=2, thread_name_prefix="pigeon_jobs")
+pigeon_jobs = ThreadPoolExecutor(max_workers=3, thread_name_prefix="pigeon_jobs")
 
 
 def task_done(future):
-    exception = None
     if future._exception:
         exception = future._exception
         exception = str(exception)
-    resp = None
+        logger.info(f"ERROR:{exception}")
     if future._result:
         guid, url = future._result
-        resp = requests.post(f"{settings.OSF_API_URL}_/ia/{guid}/done/", json={"IA_url": url})
-
-    logger.info(f"DONE: Result:{future._result}, Exception:{exception} Response:{resp}")
+        resp = requests.post(
+            f"{settings.OSF_API_URL}_/ia/{guid}/done/", json={"IA_url": url}
+        )
+        logger.info(f"DONE:{future._result} Response:{resp}")
 
 
 @app.route("/")
@@ -47,7 +45,9 @@ async def metadata(request, guid):
     return json({guid: future._state})
 
 
-parser = argparse.ArgumentParser(description="Set the environment to run OSF pigeon in.")
+parser = argparse.ArgumentParser(
+    description="Set the environment to run OSF pigeon in."
+)
 parser.add_argument(
     "--env", dest="env", help="what environment are you running this for"
 )

@@ -30,7 +30,10 @@ def mock_datacite(guid, identifiers_json):
 
         with responses.RequestsMock(assert_all_requests_are_fired=True) as rsps:
             rsps.add(
-                responses.GET, f"{settings.DATACITE_URL}metadata/{doi}", status=200
+                responses.GET,
+                f"{settings.DATACITE_URL}metadata/{doi}",
+                status=200,
+                body=b"pretend this is XML.",
             )
             rsps.add(
                 responses.GET,
