@@ -4,21 +4,20 @@ import json
 import pytest
 import mock
 from osf_pigeon import settings
+from asyncio import run
 
 import responses
 import tempfile
 from osf_pigeon.pigeon import (
     get_and_write_file_data_to_temp,
     get_and_write_json_to_temp,
-    bag_and_tag,
     create_zip_data,
     format_metadata_for_ia_item,
     modify_metadata_with_retry,
     get_contributors,
     sync_metadata,
-    find_subcollection_for_registration,
     upload,
-    get_datacite_metadata,
+    write_datacite_metadata,
 )
 import internetarchive
 import zipfile
@@ -44,10 +43,12 @@ class TestGetAndWriteFileDataToTemp:
         self, mock_waterbutler, guid, zip_name, zip_data
     ):
         with tempfile.TemporaryDirectory() as temp_dir:
-            get_and_write_file_data_to_temp(
-                f"{settings.OSF_FILES_URL}v1/resources/{guid}/providers/osfstorage/?zip=",
-                temp_dir,
-                zip_name,
+            run(
+                get_and_write_file_data_to_temp(
+                    f"{settings.OSF_FILES_URL}v1/resources/{guid}/providers/osfstorage/?zip=",
+                    temp_dir,
+                    zip_name,
+                )
             )
             assert len(os.listdir(temp_dir)) == 1
             assert os.listdir(temp_dir)[0] == zip_name
@@ -81,8 +82,10 @@ class TestGetAndWriteJSONToTemp:
         )
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            get_and_write_json_to_temp(
-                f"{settings.OSF_API_URL}v2/guids/{guid}", temp_dir, file_name
+            run(
+                get_and_write_json_to_temp(
+                    f"{settings.OSF_API_URL}v2/guids/{guid}", temp_dir, file_name
+                )
             )
             assert len(os.listdir(temp_dir)) == 1
             assert os.listdir(temp_dir)[0] == file_name
@@ -137,10 +140,12 @@ class TestGetAndWriteJSONToTempMultipage:
         )
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            get_and_write_json_to_temp(
-                f"{settings.OSF_API_URL}v2/registrations/{guid}/wikis/",
-                temp_dir,
-                file_name,
+            run(
+                get_and_write_json_to_temp(
+                    f"{settings.OSF_API_URL}v2/registrations/{guid}/wikis/",
+                    temp_dir,
+                    file_name,
+                )
             )
             assert len(os.listdir(temp_dir)) == 1
             assert os.listdir(temp_dir)[0] == file_name
@@ -185,30 +190,23 @@ class TestContributors:
         )
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            get_and_write_json_to_temp(
-                f"{settings.OSF_API_URL}v2/registrations/{guid}/contributors/",
-                temp_dir,
-                file_name,
-                parse_json=get_contributors,
+            run(
+                get_and_write_json_to_temp(
+                    f"{settings.OSF_API_URL}v2/registrations/{guid}/contributors/",
+                    temp_dir,
+                    file_name,
+                    parse_json=get_contributors,
+                )
             )
             assert len(os.listdir(temp_dir)) == 1
             assert os.listdir(temp_dir)[0] == file_name
             info = json.loads(open(os.path.join(temp_dir, file_name)).read())["data"]
             assert len(info) == 1
-            assert info[0]["ORCiD"] == "0000-0001-4934-3444"
+            assert (
+                info[0]["embeds"]["users"]["data"]["attributes"]["social"]["orcid"]
+                == "0000-0001-4934-3444"
+            )
             assert info[0]["affiliated_institutions"] == ["Center For Open Science"]
-
-
-class TestBagAndTag:
-    @pytest.fixture
-    def guid(self):
-        return "guid0"
-
-    def test_bag_and_tag(self, guid):
-        with tempfile.TemporaryDirectory() as temp_dir:
-            with mock.patch("bagit.Bag") as mock_bag:
-                bag_and_tag(temp_dir)
-                mock_bag.assert_called_with(temp_dir)
 
 
 class TestDatacite:
@@ -217,19 +215,19 @@ class TestDatacite:
         return "guid0"
 
     @pytest.fixture
+    def temp_dir(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            yield temp_dir
+
+    @pytest.fixture
     def identifiers_json(self):
         with open(os.path.join(HERE, "fixtures/node-identifiers.json"), "rb") as fp:
             return fp.read()
 
-    def test_get_datacite_metadata(self, guid, mock_datacite, identifiers_json):
-        xml = get_datacite_metadata(
-            guid,
-            osf_api_url=settings.OSF_API_URL,
-            datacite_username=settings.DATACITE_USERNAME,
-            datacite_password=settings.DATACITE_PASSWORD,
-            datacite_prefix=settings.DATACITE_PREFIX,
-        )
-
+    def test_get_datacite_metadata(
+        self, guid, mock_datacite, identifiers_json, temp_dir
+    ):
+        xml = run(write_datacite_metadata(guid, temp_dir))
         assert xml == "pretend this is XML."
 
 
@@ -245,14 +243,12 @@ class TestCreateZipData:
             fp.write(b"partytime")
 
     def test_create_zip_data(self, temp_dir, test_file):
-        create_zip_data(temp_dir)
+        zip_data = create_zip_data(temp_dir)
+        zip_file = zipfile.ZipFile(zip_data)
 
-        with open(os.path.join(temp_dir, "bag.zip"), "rb") as fp:
-            zip_file = zipfile.ZipFile(fp)
-
-            assert len(zip_file.infolist()) == 1
-            assert zip_file.infolist()[0].filename == "test_file.txt"
-            zip_file.extract("test_file.txt", temp_dir)  # just to read
+        assert len(zip_file.infolist()) == 1
+        assert zip_file.infolist()[0].filename == "test_file.txt"
+        zip_file.extract("test_file.txt", temp_dir)  # just to read
 
         assert (
             open(os.path.join(temp_dir, "test_file.txt"), "rb").read() == b"partytime"
@@ -279,6 +275,13 @@ class TestMetadata:
             return json.loads(fp.read())
 
     @pytest.fixture
+    def registration_children_sparse(self):
+        with open(
+            os.path.join(HERE, "fixtures/sparse-registration-children.json"), "rb"
+        ) as fp:
+            return fp.read()
+
+    @pytest.fixture
     def test_node_json(self, temp_dir):
         os.mkdir(os.path.join(temp_dir, "data"))
         with open(
@@ -288,13 +291,27 @@ class TestMetadata:
                 fp.write(json_fp.read())
         yield
 
-    def test_format_metadata_for_ia_item(self, metadata):
-        metadata = format_metadata_for_ia_item(metadata)
+    def test_format_metadata_for_ia_item(
+        self, metadata, registration_children_sparse, mock_osf_api
+    ):
+        mock_osf_api.add(
+            responses.GET,
+            f"{settings.OSF_API_URL}v2/registrations/pkdm6/children/?fields%5Bregistrations%5D=id",
+            body=registration_children_sparse,
+        )
+        metadata = run(format_metadata_for_ia_item(metadata))
         assert metadata == {
             "title": "Root Registration with no children",
             "description": "This is a fake registration to test how to structure our project.",
             "date_created": "2021-02-08",
             "contributor": "Center for Open Science",
+            "children": [
+                f"https://archive.org/details/osf-registrations-hu68d-{ID_VERSION}",
+                f"https://archive.org/details/osf-registrations-puxmb-{ID_VERSION}",
+            ],
+            "license": None,
+            "tags": None,
+            "category": "",
         }
 
     def test_modify_metadata(self, temp_dir, test_node_json):
@@ -359,121 +376,6 @@ class TestMetadata:
             assert call[1][0] == metadata
 
 
-class TestSubcollections:
-    @pytest.fixture
-    def temp_dir(self):
-        with tempfile.TemporaryDirectory() as temp_dir:
-            yield temp_dir
-
-    @pytest.fixture
-    def root_metadata(self):
-        with open(os.path.join(HERE, "fixtures/root-registration.json"), "rb") as fp:
-            return json.loads(fp.read())
-
-    @pytest.fixture
-    def child_metadata(self):
-        with open(os.path.join(HERE, "fixtures/child-registration.json"), "rb") as fp:
-            return fp.read()
-
-    @pytest.fixture
-    def parent_with_children(self):
-        with open(
-            os.path.join(HERE, "fixtures/parent-with-children-embed.json"), "rb"
-        ) as fp:
-            return fp.read()
-
-    @pytest.fixture
-    def parent_with_one_child(self):
-        with open(
-            os.path.join(HERE, "fixtures/parent-with-child-embed.json"), "rb"
-        ) as fp:
-            return fp.read()
-
-    def test_create_subcollection(self):
-        pass
-
-    def test_find_subcollection_root(self, mock_ia_client, root_metadata):
-        find_subcollection_for_registration(root_metadata, "notreal", "fake")
-
-        mock_ia_client.assert_called_with(
-            config={"s3": {"access": "notreal", "secret": "fake"}}
-        )
-
-        mock_ia_client.item.upload.assert_called_with(
-            files={"dummy.txt": mock.ANY},
-            metadata={
-                "mediatype": "collection",
-                "collection": f"collection-osf-registration-providers-osf-{ID_VERSION}",
-                "title": "Collection for Root Registration with no children",
-            },
-        )
-
-    def test_find_subcollection_has_siblings(
-        self, mock_ia_client, mock_osf_api, child_metadata, parent_with_children
-    ):
-        mock_osf_api.add(
-            responses.GET,
-            "https://api.osf.io/v2/registrations/mdn5w/?"
-            "embed=children&embed=parent&version=2.20&embed=parent",
-            body=parent_with_children,
-            status=200,
-        )
-
-        find_subcollection_for_registration(
-            json.loads(child_metadata), "notreal", "fake"
-        )
-        mock_ia_client.assert_called_with(
-            config={"s3": {"access": "notreal", "secret": "fake"}}
-        )
-        mock_ia_client.item.upload.assert_called_with(
-            files={"dummy.txt": mock.ANY},
-            metadata={
-                "mediatype": "collection",
-                "collection": f"collection-osf-registration-providers-osf-{ID_VERSION}",
-                "title": "Collection for Parent with 3 Children",
-            },
-        )
-
-    def test_find_subcollection_only_child(
-        self,
-        mock_ia_client,
-        mock_osf_api,
-        child_metadata,
-        parent_with_one_child,
-        parent_with_children,
-    ):
-        mock_osf_api.add(
-            responses.GET,
-            "https://api.osf.io/v2/registrations/mdn5w/"
-            "?embed=children&embed=parent&version=2.20&embed=parent",
-            body=parent_with_one_child,
-            status=200,
-        )
-        mock_osf_api.add(
-            responses.GET,
-            "https://api.osf.io/v2/registrations/nope1/"
-            "?embed=children&embed=parent&version=2.20&embed=parent",
-            body=parent_with_children,
-            status=200,
-        )
-
-        find_subcollection_for_registration(
-            json.loads(child_metadata), "notreal", "fake"
-        )
-
-        mock_ia_client.assert_called_with(
-            config={"s3": {"access": "notreal", "secret": "fake"}}
-        )
-        mock_ia_client.item.upload.assert_called_with(
-            files={"dummy.txt": mock.ANY},
-            metadata={
-                "mediatype": "collection",
-                "collection": f"collection-osf-registration-providers-osf-{ID_VERSION}",
-                "title": "Collection for Parent with 3 Children",
-            },
-        )
-
-
 class TestUpload:
     @pytest.fixture
     def guid(self):
@@ -493,55 +395,99 @@ class TestUpload:
         with tempfile.TemporaryDirectory() as temp_dir:
             yield temp_dir
 
-    def test_upload(self, mock_ia_client, mock_osf_api, guid, temp_dir, metadata):
-        upload(
-            guid,
-            temp_dir,
-            metadata,
-            ia_access_key="Buddy Ryan",
-            ia_secret_key="Fletcher Cox",
+    @pytest.fixture
+    def registration_children_sparse(self):
+        with open(
+            os.path.join(HERE, "fixtures/sparse-registration-children.json"), "rb"
+        ) as fp:
+            return fp.read()
+
+    def test_upload(
+        self,
+        mock_ia_client,
+        mock_osf_api,
+        guid,
+        zip_data,
+        registration_children_sparse,
+        metadata,
+    ):
+        mock_osf_api.add(
+            responses.GET,
+            f"{settings.OSF_API_URL}v2/registrations/pkdm6/children/?fields%5Bregistrations%5D=id",
+            body=registration_children_sparse,
+        )
+        run(
+            upload(
+                guid,
+                zip_data,
+                metadata,
+            )
         )
 
         mock_ia_client.session.get_item.assert_called_with("guid0")
         mock_ia_client.item.upload.assert_called_with(
-            {"bag.zip": mock.ANY},
+            mock.ANY,
             metadata={
-                "collection": f"collection-osf-registrations-pkdm6-{ID_VERSION}",
+                "collection": f"collection-osf-registration-providers-osf-{ID_VERSION}",
                 "title": "Root Registration with no children",
                 "description": "This is a fake registration to test how to structure our project.",
                 "date_created": "2021-02-08",
                 "contributor": "Center for Open Science",
+                "category": "",
+                "license": None,
+                "tags": None,
+                "children": [
+                    f"https://archive.org/details/osf-registrations-hu68d-{settings.ID_VERSION}",
+                    f"https://archive.org/details/osf-registrations-puxmb-{settings.ID_VERSION}",
+                ],
             },
-            access_key="Buddy Ryan",
-            secret_key="Fletcher Cox",
+            secret_key=settings.IA_SECRET_KEY,
+            access_key=settings.IA_ACCESS_KEY,
         )
 
     def test_upload_with_different_provider(
-        self, mock_ia_client, mock_osf_api, guid, temp_dir, metadata
+        self,
+        mock_ia_client,
+        mock_osf_api,
+        guid,
+        zip_data,
+        metadata,
+        registration_children_sparse,
     ):
         """
         Different providers should get uploaded to different collections
         """
         metadata["data"]["relationships"]["provider"]["data"]["id"] = "burds"
 
-        upload(
-            guid,
-            temp_dir,
-            metadata,
-            ia_access_key="Buddy Ryan",
-            ia_secret_key="Fletcher Cox",
+        mock_osf_api.add(
+            responses.GET,
+            f"{settings.OSF_API_URL}v2/registrations/pkdm6/children/?fields%5Bregistrations%5D=id",
+            body=registration_children_sparse,
         )
-
+        run(
+            upload(
+                guid,
+                zip_data,
+                metadata,
+            )
+        )
         mock_ia_client.session.get_item.assert_called_with("guid0")
         mock_ia_client.item.upload.assert_called_with(
-            {"bag.zip": mock.ANY},
+            mock.ANY,
             metadata={
-                "collection": f"collection-osf-registrations-pkdm6-{ID_VERSION}",
+                "collection": f"collection-osf-registration-providers-burds-{ID_VERSION}",
                 "title": "Root Registration with no children",
                 "description": "This is a fake registration to test how to structure our project.",
                 "date_created": "2021-02-08",
                 "contributor": "Center for Open Science",
+                "category": "",
+                "license": None,
+                "tags": None,
+                "children": [
+                    "https://archive.org/details/osf-registrations-hu68d-local_v1",
+                    "https://archive.org/details/osf-registrations-puxmb-local_v1",
+                ],
             },
-            access_key="Buddy Ryan",
-            secret_key="Fletcher Cox",
+            secret_key=settings.IA_SECRET_KEY,
+            access_key=settings.IA_ACCESS_KEY,
         )

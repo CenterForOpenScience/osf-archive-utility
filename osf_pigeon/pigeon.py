@@ -6,6 +6,7 @@ from io import BytesIO
 from datetime import datetime
 import internetarchive
 from asyncio import events
+from concurrent.futures import ThreadPoolExecutor
 
 import tempfile
 import math
@@ -13,29 +14,25 @@ import asyncio
 import requests
 
 from typing import Tuple, Dict
-from ratelimit import sleep_and_retry
-from ratelimit.exception import RateLimitException
 from datacite import DataCiteMDSClient
 from datacite.errors import DataCiteNotFoundError
 
 from osf_pigeon import settings
 import zipfile
 import bagit
+from ratelimit import sleep_and_retry
+from ratelimit.exception import RateLimitException
 
 
-def get_id(guid, collection=False):
+def get_id(guid):
     """
     Naming scheme for osf items
     `{django app name}-{type}-{guid/_id}-{version number}`
 
-    Collections have the prefix, `collection-` for registrations
-
-    :param metadata:
+    :param guid:
     :return:
     """
     item_id = f"osf-registrations-{guid}-{settings.ID_VERSION}"
-    if collection:
-        return f"collection-{item_id}"
     return item_id
 
 
@@ -47,7 +44,7 @@ def get_provider_id(metadata):
     Collections have the prefix, `collection-` in the current scheme providers are always
     collections.
 
-    :param metadata:
+    :param guid:
     :return:
     """
     return (
@@ -56,40 +53,35 @@ def get_provider_id(metadata):
     )
 
 
-def get_and_write_file_data_to_temp(url, temp_dir, dir_name):
-    response = get_with_retry(url)
-    with open(os.path.join(temp_dir, dir_name), "wb") as fp:
-        fp.write(response.content)
+async def get_and_write_file_data_to_temp(from_url, to_dir, name):
+    with get_with_retry(from_url) as response:
+        with open(os.path.join(to_dir, name), "wb") as fp:
+            for chunk in response.iter_content():
+                fp.write(chunk)
 
 
-def get_and_write_json_to_temp(url, temp_dir, filename, parse_json=None):
-    pages = run(get_paginated_data(url, parse_json))
-    with open(os.path.join(temp_dir, filename), "w") as fp:
-        fp.write(json.dumps(pages))
+async def get_and_write_json_to_temp(from_url, to_dir, name, parse_json=None):
+    pages = await get_paginated_data(from_url, parse_json)
+    with open(os.path.join(to_dir, name), "w") as fp:
+        json.dump(pages, fp)
 
-
-def bag_and_tag(temp_dir):
-
-    bagit.make_bag(temp_dir)
-    bag = bagit.Bag(temp_dir)
-    assert bag.is_valid()
+    return pages
 
 
 def create_zip_data(temp_dir):
     zip_data = BytesIO()
-    with zipfile.ZipFile(zip_data, "w") as zip_file:
+    zip_data.name = "bag.zip"
+    with zipfile.ZipFile(zip_data, "w") as fp:
         for root, dirs, files in os.walk(temp_dir):
             for file in files:
                 file_path = os.path.join(root, file)
                 file_name = re.sub(f"^{temp_dir}", "", file_path)
-                zip_file.write(file_path, arcname=file_name)
+                fp.write(file_path, arcname=file_name)
     zip_data.seek(0)
-
-    with open(os.path.join(temp_dir, "bag.zip"), "wb") as fp:
-        fp.write(zip_data.read())
+    return zip_data
 
 
-def format_metadata_for_ia_item(json_metadata):
+async def format_metadata_for_ia_item(json_metadata):
     """
     This is meant to take the response JSON metadata and format it for IA buckets, this is not
     used to generate JSON to be uploaded as raw data into the buckets.
@@ -100,18 +92,37 @@ def format_metadata_for_ia_item(json_metadata):
     date_string = json_metadata["data"]["attributes"]["date_created"]
     date_string = date_string.partition(".")[0]
     date_time = datetime.strptime(date_string, "%Y-%m-%dT%H:%M:%S")
+    ia_metadata = {
+        "title": json_metadata["data"]["attributes"]["title"],
+        "description": json_metadata["data"]["attributes"]["description"],
+        "date_created": date_time.strftime("%Y-%m-%d"),
+        "contributor": "Center for Open Science",
+        "category": json_metadata["data"]["attributes"]["category"],
+        "license": None,  # https://openscience.atlassian.net/browse/ENG-938
+        "tags": json_metadata["data"]["attributes"]["tags"],
+    }
 
-    ia_metadata = dict(
-        title=json_metadata["data"]["attributes"]["title"],
-        description=json_metadata["data"]["attributes"]["description"],
-        date_created=date_time.strftime("%Y-%m-%d"),
-        contributor="Center for Open Science",
-    )
+    if json_metadata["data"]["relationships"]["parent"]["data"]:
+        parent_id = get_id(
+            json_metadata["data"]["relationships"]["parent"]["data"]["id"]
+        )
+        ia_metadata["parent"] = f"https://archive.org/details/{parent_id}"
+
+    children = (
+        await get_paginated_data(
+            f'{settings.OSF_API_URL}v2/registrations/{json_metadata["data"]["id"]}/children/'
+            f"?fields[registrations]=id"
+        )
+    )["data"]
+    if children:
+        urls = []
+        for child in children:
+            urls.append(f'https://archive.org/details/{get_id(child["id"])}')
+        ia_metadata["children"] = urls
 
     article_doi = json_metadata["data"]["attributes"]["article_doi"]
     if article_doi:
         ia_metadata["external-identifier"] = f"urn:doi:{article_doi}"
-
     return ia_metadata
 
 
@@ -127,16 +138,10 @@ def modify_metadata_with_retry(ia_item, metadata, retries=2, sleep_time=60):
             raise e
 
 
-def get_datacite_metadata(
-    guid, osf_api_url, datacite_username, datacite_password, datacite_prefix
-):
-    assert isinstance(datacite_password, str), "Datacite password not passed to pigeon"
-    assert isinstance(datacite_username, str), "Datacite username not passed to pigeon"
-    assert isinstance(datacite_prefix, str), "Datacite prefix not passed to pigeon"
-    data = get_with_retry(f"{osf_api_url}v2/registrations/{guid}/identifiers/").json()[
-        "data"
-    ]
-
+async def write_datacite_metadata(guid, temp_dir):
+    data = get_with_retry(
+        f"{settings.OSF_API_URL}v2/registrations/{guid}/identifiers/"
+    ).json()["data"]
     doi = [
         identifier["attributes"]["value"]
         for identifier in data
@@ -151,16 +156,22 @@ def get_datacite_metadata(
 
     client = DataCiteMDSClient(
         url=settings.DATACITE_URL,
-        username=datacite_username,
-        password=datacite_password,
-        prefix=datacite_prefix,
+        username=settings.DATACITE_USERNAME,
+        password=settings.DATACITE_PASSWORD,
+        prefix=settings.DATACITE_PREFIX,
     )
+
     try:
-        return client.metadata_get(doi)
+        xml_metadata = client.metadata_get(doi)
     except DataCiteNotFoundError:
         raise DataCiteNotFoundError(
             f"Datacite DOI not found for registration {guid} on Datacite server."
         )
+
+    with open(os.path.join(temp_dir, "datacite.xml"), "w") as fp:
+        fp.write(xml_metadata)
+
+    return xml_metadata
 
 
 @sleep_and_retry
@@ -171,13 +182,10 @@ def get_with_retry(
     if not headers:
         headers = {}
 
-    if not settings.OSF_USER_THROTTLE_ENABLED:
-        assert (
-            settings.OSF_BEARER_TOKEN
-        ), "must have OSF_BEARER_TOKEN set to disable the api user throttle of the OSF"
+    if settings.OSF_BEARER_TOKEN:
         headers["Authorization"] = f"Bearer {settings.OSF_BEARER_TOKEN}"
 
-    resp = requests.get(url, headers=headers)
+    resp = requests.get(url, headers=headers, stream=True)
     if resp.status_code in retry_on:
         raise RateLimitException(
             message="Too many requests, sleeping.",
@@ -205,19 +213,17 @@ def get_contributors(response):
     for contributor in response["data"]:
         contributor_data = {}
         embed_data = contributor["embeds"]["users"]["data"]
-        contributor_data["ORCiD"] = embed_data["attributes"]["social"].get(
-            "orcid", None
-        )
-        contributor_data["name"] = embed_data["attributes"]["full_name"]
-        links = embed_data["relationships"]["institutions"]["links"]
-        institution_url = links["related"]["href"]
+        institution_url = embed_data["relationships"]["institutions"]["links"][
+            "related"
+        ]["href"]
         institution_response = get_with_retry(institution_url, retry_on=(429,))
         institution_data = institution_response.json()["data"]
         institution_list = [
             institution["attributes"]["name"] for institution in institution_data
         ]
         contributor_data["affiliated_institutions"] = institution_list
-        contributor_data_list.append(contributor_data)
+        contributor.update(contributor_data)
+        contributor_data_list.append(contributor)
     response["data"] = contributor_data_list
     return response
 
@@ -270,92 +276,13 @@ def sync_metadata(item_name, metadata):
     modify_metadata_with_retry(ia_item, metadata)
 
 
-def find_subcollection_for_registration(metadata, ia_access_key, ia_secret_key):
-    """
-    We are following the typical osf node structure with one quirk, components with no siblings are
-     all pointed to the first parent directory with multiple children. All root nodes are in a
-     provider collection which is defined outside of this repo.
-
-    :param metadata:
-    :param ia_access_key:
-    :param ia_secret_key:
-    :return:
-    """
-
-    if (
-        metadata["data"]["relationships"]["parent"]["data"] is None
-    ):  # is root, gets own collection
-        root_collection_id = get_id(metadata["data"]["id"], collection=True)
-        create_subcollection(
-            root_collection_id,
-            ia_access_key,
-            ia_secret_key,
-            metadata={
-                "title": f'Collection for {metadata["data"]["attributes"]["title"]}'
-            },
-            parent_collection=get_provider_id(metadata),
-        )
-        return root_collection_id
-    else:
-        parent_url = metadata["data"]["relationships"]["parent"]["links"]["related"][
-            "href"
-        ]
-        parent_data = run(
-            get_paginated_data(
-                f"{parent_url}"
-                f"?embed=parent&version=2.20&embed=children&embed=parent"
-            )
-        )
-        if parent_data["data"]["embeds"]["children"]["meta"]["total"] == 1:
-            # This is an only child recurse up to reach grandparent with multiple children or root
-            return find_subcollection_for_registration(
-                parent_data, ia_access_key, ia_secret_key
-            )
-
-        else:
-            parent_collection_id = get_id(parent_data["data"]["id"], collection=True)
-            errors = parent_data["data"]["embeds"]["parent"].get("errors")
-            if errors and errors[0]["detail"] == "Not found.":
-                create_subcollection(
-                    parent_collection_id,
-                    ia_access_key,
-                    ia_secret_key,
-                    metadata={
-                        "title": f'Collection for {parent_data["data"]["attributes"]["title"]}'
-                    },
-                    parent_collection=get_provider_id(metadata),
-                )
-            else:
-                create_subcollection(
-                    parent_collection_id,
-                    ia_access_key,
-                    ia_secret_key,
-                    metadata={
-                        "title": f'Collection for {parent_data["data"]["attributes"]["title"]}'
-                    },
-                    parent_collection=get_id(
-                        parent_data["data"]["id"], collection=True
-                    ),
-                )
-            return get_id(parent_data["data"]["id"], collection=True)
-
-
-def create_subcollection(
-    collection_id,
-    ia_access_key,
-    ia_secret_key,
-    metadata=None,
-    parent_collection=None,
-    retries=3,
-):
+def create_subcollection(collection_id, metadata=None, parent_collection=None):
     """
     The expected sub-collection hierarchy is as follows top-level OSF collection -> provider
     collection -> collection for nodes with multiple children -> all only child nodes
 
     :param metadata: dict should attributes for the provider's sub-collection is being created
     :param parent_collection: str the name of the  sub-collection's parent
-    :param ia_access_key: Internet Archive's access key
-    :param ia_secret_key: Internet Archive's secret key
     :return:
     """
     if metadata is None:
@@ -363,182 +290,106 @@ def create_subcollection(
 
     session = internetarchive.get_session(
         config={
-            "s3": {"access": ia_access_key, "secret": ia_secret_key},
+            "s3": {"access": settings.IA_ACCESS_KEY, "secret": settings.IA_SECRET_KEY},
         },
     )
 
     collection = internetarchive.Item(session, collection_id)
-    parent_collection = parent_collection or settings.OSF_COLLECTION_NAME
-    try:
-        collection.upload(
-            files={"dummy.txt": BytesIO(b"dummy")},
-            metadata={
-                "mediatype": "collection",
-                "collection": parent_collection,
-                **metadata,
-            },
-        )
-    except requests.exceptions.HTTPError as e:
-        # You don't have permission to join because it hasn't be created yet
-        if (
-            "Access Denied - You lack sufficient privileges to write to those collections"
-            in str(e)
-            and retries
-        ):
-            time.sleep(10)
-            retries -= 1
-            create_subcollection(
-                parent_collection,
-                ia_access_key,
-                ia_secret_key,
-                parent_collection=parent_collection,
-                retries=retries,
-            )
-        else:
-            raise requests.exceptions.Timeout(
-                f"{collection_id} timed out uploading collection to {parent_collection}"
-            )
+    collection.upload(
+        files={"dummy.txt": BytesIO(b"dummy")},
+        metadata={
+            "mediatype": "collection",
+            "collection": parent_collection,
+            **metadata,
+        },
+    )
 
 
-def upload(
-    item_name,
-    tmp_dir,
-    metadata,
-    ia_access_key,
-    ia_secret_key,
-    collection_id=None,
-    retries=3,
-):
+async def upload(item_name, data, metadata):
     ia_item = get_ia_item(item_name)
-    if collection_id is None:
-        collection_id = find_subcollection_for_registration(
-            metadata, ia_access_key, ia_secret_key
-        )
-
-    ia_metadata = format_metadata_for_ia_item(metadata)
-    try:
-        ia_item.upload(
-            {"bag.zip": os.path.join(tmp_dir, "bag.zip")},
-            metadata={"collection": collection_id, **ia_metadata},
-            access_key=ia_access_key,
-            secret_key=ia_secret_key,
-        )
-    except requests.exceptions.HTTPError as e:
-        # You don't have permission to join because a collection because it might not have been
-        # created yet.
-        if (
-            "Access Denied - You lack sufficient privileges to write to those collections"
-            in str(e)
-            and retries
-        ):
-            time.sleep(30)
-            retries -= 1
-            upload(
-                item_name,
-                tmp_dir,
-                metadata,
-                ia_access_key,
-                ia_secret_key,
-                collection_id=collection_id,
-                retries=retries,
-            )
-        else:
-            raise requests.exceptions.Timeout(
-                f"{item_name} timed out uploading item to collection {collection_id}"
-            )
-
+    ia_metadata = await format_metadata_for_ia_item(metadata)
+    ia_item.upload(
+        data,
+        metadata={"collection": get_provider_id(metadata), **ia_metadata},
+        access_key=settings.IA_ACCESS_KEY,
+        secret_key=settings.IA_SECRET_KEY,
+    )
     return ia_item
 
 
-def main(
-    guid,
-    datacite_username=settings.DATACITE_USERNAME,
-    datacite_password=settings.DATACITE_PASSWORD,
-    datacite_prefix=settings.DATACITE_PREFIX,
-    ia_access_key=settings.IA_ACCESS_KEY,
-    ia_secret_key=settings.IA_SECRET_KEY,
-    osf_api_url=settings.OSF_API_URL,
-    osf_files_url=settings.OSF_FILES_URL,
-    osf_bearer_token=settings.OSF_BEARER_TOKEN,
-    id_version=settings.ID_VERSION,
-    collection_name=settings.OSF_COLLECTION_NAME,
-    datacite_url=settings.DATACITE_URL,
-):
-    settings.OSF_BEARER_TOKEN = osf_bearer_token
-    settings.ID_VERSION = id_version
-    settings.OSF_COLLECTION_NAME = collection_name
-    settings.DATACITE_URL = datacite_url
+async def get_registration_metadata(guid, temp_dir, filename):
+    metadata = await get_paginated_data(
+        f"{settings.OSF_API_URL}v2/guids/{guid}/?embed=parent&embed=children&version=2.20"
+    )
+    if metadata["data"]["attributes"]["withdrawn"]:
+        raise PermissionError(f"Registration {guid} is withdrawn")
 
-    assert isinstance(
-        ia_access_key, str
-    ), "Internet Archive access key was not passed to pigeon"
-    assert isinstance(
-        ia_secret_key, str
-    ), "Internet Archive secret key not passed to pigeon"
+    with open(os.path.join(temp_dir, filename), "w") as fp:
+        json.dump(metadata, fp)
 
-    with tempfile.TemporaryDirectory() as temp_dir:
-        xml_metadata = get_datacite_metadata(
-            guid, osf_api_url, datacite_username, datacite_password, datacite_prefix
+    return metadata
+
+
+async def get_raw_data(guid, temp_dir):
+    try:
+        await get_and_write_file_data_to_temp(
+            from_url=f"{settings.OSF_FILES_URL}v1/resources/{guid}/providers/osfstorage/?zip=",
+            to_dir=temp_dir,
+            name="archived_files.zip",
+        )
+    except requests.exceptions.ChunkedEncodingError:
+        raise requests.exceptions.ChunkedEncodingError(
+            f"OSF file system is sending incomplete streams for {guid}"
         )
 
-        with open(os.path.join(temp_dir, "datacite.xml"), "w") as fp:
-            fp.write(xml_metadata)
 
-        get_and_write_json_to_temp(
-            f"{osf_api_url}v2/guids/{guid}/?embed=parent&embed=children&version=2.20",
-            temp_dir,
-            "registration.json",
-        )
-        with open(os.path.join(temp_dir, "registration.json"), "r") as f:
-            metadata = json.loads(f.read())
+async def main(guid):
+    with tempfile.TemporaryDirectory(prefix=get_id(guid)) as temp_dir:
+        # await first to check if withdrawn
+        metadata = await get_registration_metadata(guid, temp_dir, "registration.json")
+        # then start all other tasks
+        tasks = [
+            write_datacite_metadata(guid, temp_dir),
+            get_raw_data(guid, temp_dir),
+            get_and_write_json_to_temp(
+                from_url=f"{settings.OSF_API_URL}v2/registrations/{guid}/wikis/"
+                f"?page[size]=100",
+                to_dir=temp_dir,
+                name="wikis.json",
+            ),
+            get_and_write_json_to_temp(
+                from_url=f"{settings.OSF_API_URL}v2/registrations/{guid}/logs/"
+                f"?page[size]=100",
+                to_dir=temp_dir,
+                name="logs.json",
+            ),
+            get_and_write_json_to_temp(
+                from_url=f"{settings.OSF_API_URL}v2/registrations/{guid}/contributors/"
+                f"?page[size]=100",
+                to_dir=temp_dir,
+                name="contributors.json",
+                parse_json=get_contributors,
+            ),
+        ]
+        with ThreadPoolExecutor(max_workers=5) as pool:
+            running_tasks = [pool.submit(run, task) for task in tasks]
+            for task in running_tasks:
+                task.result()
 
-        if metadata["data"]["attributes"]["withdrawn"]:
-            raise PermissionError(f"Registration {guid} is withdrawn")
+        bagit.make_bag(temp_dir)
+        bag = bagit.Bag(temp_dir)
+        assert bag.is_valid()
 
-        try:
-            get_and_write_file_data_to_temp(
-                f"{osf_files_url}v1/resources/{guid}/providers/osfstorage/?zip=",
-                temp_dir,
-                "archived_files.zip",
-            )
-        except requests.exceptions.ChunkedEncodingError:
-            raise Exception(f"OSF file service is temporally unavailable for {guid}")
-
-        get_and_write_json_to_temp(
-            f"{osf_api_url}v2/registrations/{guid}/wikis/",
-            temp_dir,
-            "wikis.json",
-        )
-        get_and_write_json_to_temp(
-            f"{osf_api_url}v2/registrations/{guid}/logs/",
-            temp_dir,
-            "logs.json",
-        )
-        get_and_write_json_to_temp(
-            f"{osf_api_url}v2/registrations/{guid}/contributors/",
-            temp_dir,
-            "contributors.json",
-            parse_json=get_contributors,
-        )
-        bag_and_tag(temp_dir)
-        create_zip_data(temp_dir)
-
-        ia_item = upload(
-            get_id(metadata["data"]["id"]),
-            temp_dir,
-            metadata,
-            ia_access_key,
-            ia_secret_key,
-        )
+        zip_data = create_zip_data(temp_dir)
+        ia_item = await upload(get_id(guid), zip_data, metadata)
 
         return guid, ia_item.urls.details
 
 
-def run(main, *, debug=False):
+def run(main):
     loop = events.new_event_loop()
     try:
         events.set_event_loop(loop)
-        loop.set_debug(debug)
         return loop.run_until_complete(main)
     finally:
         try:
