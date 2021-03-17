@@ -30,7 +30,7 @@ ENV = {
     "staging": {
         "OSF_API_URL": "https://api.staging.osf.io/",
         "OSF_FILES_URL": "https://files.us.staging.osf.io/",
-        "DATACITE_PREFIX": "10.17605",
+        "DATACITE_PREFIX": "10.70102",
         "DATACITE_URL": "https://mds.test.datacite.org/",
         "DOI_FORMAT": "{prefix}/fk2osf.io/{guid}",
         "OSF_COLLECTION_NAME": "cos-dev-sandbox",
@@ -39,7 +39,7 @@ ENV = {
     "local": {
         "OSF_API_URL": "http://localhost:8000/",
         "OSF_FILES_URL": "http://localhost:7777/",
-        "DATACITE_PREFIX": "10.17605",
+        "DATACITE_PREFIX": "10.70102",
         "DATACITE_URL": "https://mds.test.datacite.org/",
         "DOI_FORMAT": "{prefix}/fk2osf.io/{guid}",
         "OSF_COLLECTION_NAME": "cos-dev-sandbox",

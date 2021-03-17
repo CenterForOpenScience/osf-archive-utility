@@ -32,8 +32,7 @@ def get_id(guid):
     :param guid:
     :return:
     """
-    item_id = f"osf-registrations-{guid}-{settings.ID_VERSION}"
-    return item_id
+    return f"osf-registrations-{guid}-{settings.ID_VERSION}"
 
 
 def get_provider_id(metadata):
@@ -92,14 +91,71 @@ async def format_metadata_for_ia_item(json_metadata):
     date_string = json_metadata["data"]["attributes"]["date_created"]
     date_string = date_string.partition(".")[0]
     date_time = datetime.strptime(date_string, "%Y-%m-%dT%H:%M:%S")
+
+    biblo_contrbs = await get_paginated_data(
+        f'{settings.OSF_API_URL}v2/registrations/{json_metadata["data"]["id"]}/contributors/?'
+        f"filter[bibliographic]=True&fields[users]=full_name"
+    )
+    biblo_contrbs = [
+        contrib["embeds"]["users"]["data"]["attributes"]["full_name"]
+        for contrib in biblo_contrbs["data"]
+    ]
+
+    institutions = (
+        await get_paginated_data(
+            f'{settings.OSF_API_URL}v2/registrations/{json_metadata["data"]["id"]}/institutions/'
+        )
+    )["data"]
+
+    embeds = json_metadata["data"]["embeds"]
+
+    #  10 is default page size
+    if (
+        json_metadata["data"]["relationships"]["children"]["links"]["related"]["meta"][
+            "count"
+        ]
+        > 10
+    ):
+        children = await get_paginated_data(
+            f'{settings.OSF_API_URL}v2/registrations/{json_metadata["data"]["id"]}/children/'
+            f"?fields[registrations]=id"
+        )
+    else:
+        children = embeds["children"]["data"]
+
+    doi = next(
+        (
+            identifier["attributes"]["value"]
+            for identifier in embeds["identifiers"]["data"]
+            if identifier["attributes"]["category"] == "doi"
+        ),
+        None,
+    )
+    article_doi = json_metadata["data"]["attributes"]["article_doi"]
     ia_metadata = {
         "title": json_metadata["data"]["attributes"]["title"],
         "description": json_metadata["data"]["attributes"]["description"],
         "date_created": date_time.strftime("%Y-%m-%d"),
         "contributor": "Center for Open Science",
         "category": json_metadata["data"]["attributes"]["category"],
-        "license": None,  # https://openscience.atlassian.net/browse/ENG-938
+        "license": embeds["license"]["data"]["attributes"]["url"],
         "tags": json_metadata["data"]["attributes"]["tags"],
+        "contributors": biblo_contrbs,
+        "article_doi": f"urn:doi:{article_doi}" if article_doi else "",
+        "registration_doi": doi,
+        "children": [
+            f'https://archive.org/details/{get_id(child["id"])}' for child in children
+        ],
+        "registry": embeds["provider"]["data"]["attributes"]["name"],
+        "registration_schema": embeds["registration_schema"]["data"]["attributes"][
+            "name"
+        ],
+        "registered_from": json_metadata["data"]["relationships"]["registered_from"][
+            "links"
+        ]["related"]["href"],
+        "affiliated_institutions": [
+            institution["attributes"]["name"] for institution in institutions
+        ],
     }
 
     if json_metadata["data"]["relationships"]["parent"]["data"]:
@@ -108,21 +164,6 @@ async def format_metadata_for_ia_item(json_metadata):
         )
         ia_metadata["parent"] = f"https://archive.org/details/{parent_id}"
 
-    children = (
-        await get_paginated_data(
-            f'{settings.OSF_API_URL}v2/registrations/{json_metadata["data"]["id"]}/children/'
-            f"?fields[registrations]=id"
-        )
-    )["data"]
-    if children:
-        urls = []
-        for child in children:
-            urls.append(f'https://archive.org/details/{get_id(child["id"])}')
-        ia_metadata["children"] = urls
-
-    article_doi = json_metadata["data"]["attributes"]["article_doi"]
-    if article_doi:
-        ia_metadata["external-identifier"] = f"urn:doi:{article_doi}"
     return ia_metadata
 
 
@@ -138,13 +179,10 @@ def modify_metadata_with_retry(ia_item, metadata, retries=2, sleep_time=60):
             raise e
 
 
-async def write_datacite_metadata(guid, temp_dir):
-    data = get_with_retry(
-        f"{settings.OSF_API_URL}v2/registrations/{guid}/identifiers/"
-    ).json()["data"]
+async def write_datacite_metadata(guid, temp_dir, metadata):
     doi = [
         identifier["attributes"]["value"]
-        for identifier in data
+        for identifier in metadata["data"]["embeds"]["identifiers"]["data"]
         if identifier["attributes"]["category"] == "doi"
     ]
     if not doi:
@@ -153,19 +191,17 @@ async def write_datacite_metadata(guid, temp_dir):
         )
     else:
         doi = doi[0]
-
     client = DataCiteMDSClient(
         url=settings.DATACITE_URL,
         username=settings.DATACITE_USERNAME,
         password=settings.DATACITE_PASSWORD,
         prefix=settings.DATACITE_PREFIX,
     )
-
     try:
         xml_metadata = client.metadata_get(doi)
     except DataCiteNotFoundError:
         raise DataCiteNotFoundError(
-            f"Datacite DOI not found for registration {guid} on Datacite server."
+            f"Datacite DOI {doi} not found for registration {guid} on Datacite server."
         )
 
     with open(os.path.join(temp_dir, "datacite.xml"), "w") as fp:
@@ -272,8 +308,9 @@ def sync_metadata(item_name, metadata):
     ia_item = get_ia_item(item_name)
     if metadata.get("moderation_state") == "withdrawn":  # withdrawn == not searchable
         metadata["noindex"] = True
-
     modify_metadata_with_retry(ia_item, metadata)
+
+    return metadata, ia_item.urls.details
 
 
 def create_subcollection(collection_id, metadata=None, parent_collection=None):
@@ -319,7 +356,15 @@ async def upload(item_name, data, metadata):
 
 async def get_registration_metadata(guid, temp_dir, filename):
     metadata = await get_paginated_data(
-        f"{settings.OSF_API_URL}v2/guids/{guid}/?embed=parent&embed=children&version=2.20"
+        f"{settings.OSF_API_URL}v2/registrations/{guid}/"
+        f"?embed=parent"
+        f"&embed=children"
+        f"&embed=provider"
+        f"&embed=identifiers"
+        f"&embed=license"
+        f"&embed=registration_schema"
+        f"&related_counts=true"
+        f"&version=2.20"
     )
     if metadata["data"]["attributes"]["withdrawn"]:
         raise PermissionError(f"Registration {guid} is withdrawn")
@@ -347,10 +392,9 @@ async def main(guid):
     with tempfile.TemporaryDirectory(prefix=get_id(guid)) as temp_dir:
         # await first to check if withdrawn
         metadata = await get_registration_metadata(guid, temp_dir, "registration.json")
-        # then start all other tasks
+
         tasks = [
-            write_datacite_metadata(guid, temp_dir),
-            get_raw_data(guid, temp_dir),
+            write_datacite_metadata(guid, temp_dir, metadata),
             get_and_write_json_to_temp(
                 from_url=f"{settings.OSF_API_URL}v2/registrations/{guid}/wikis/"
                 f"?page[size]=100",
@@ -371,6 +415,13 @@ async def main(guid):
                 parse_json=get_contributors,
             ),
         ]
+        # only download achived data if there are files
+        file_count = metadata["data"]["relationships"]["files"]["links"]["related"][
+            "meta"
+        ]["count"]
+        if file_count:
+            tasks.append(get_raw_data(guid, temp_dir))
+
         with ThreadPoolExecutor(max_workers=5) as pool:
             running_tasks = [pool.submit(run, task) for task in tasks]
             for task in running_tasks:

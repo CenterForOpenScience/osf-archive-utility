@@ -30,7 +30,6 @@ def task_done(future):
     if future._exception:
         exception = future._exception
         exception = str(exception)
-
         logger.debug(f"ERROR:{exception}")
     if future._result:
         guid, url = future._result
