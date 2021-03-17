@@ -23,7 +23,7 @@ def mock_osf_api():
 
 
 @pytest.fixture
-def mock_datacite(guid, identifiers_json):
+def mock_datacite(guid):
 
     with mock.patch.object(settings, "DOI_FORMAT", "{prefix}/osf.io/{guid}"):
         doi = settings.DOI_FORMAT.format(prefix=settings.DATACITE_PREFIX, guid=guid)
@@ -34,12 +34,6 @@ def mock_datacite(guid, identifiers_json):
                 f"{settings.DATACITE_URL}metadata/{doi}",
                 status=200,
                 body=b"pretend this is XML.",
-            )
-            rsps.add(
-                responses.GET,
-                f"{settings.OSF_API_URL}v2/registrations/{guid}/identifiers/",
-                body=identifiers_json,
-                status=200,
             )
             yield rsps
 

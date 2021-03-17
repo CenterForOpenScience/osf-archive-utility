@@ -215,19 +215,19 @@ class TestDatacite:
         return "guid0"
 
     @pytest.fixture
+    def metadata(self):
+        with open(
+            os.path.join(HERE, "fixtures/metadata-resp-with-embeds.json"), "rb"
+        ) as fp:
+            return json.loads(fp.read())
+
+    @pytest.fixture
     def temp_dir(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             yield temp_dir
 
-    @pytest.fixture
-    def identifiers_json(self):
-        with open(os.path.join(HERE, "fixtures/node-identifiers.json"), "rb") as fp:
-            return fp.read()
-
-    def test_get_datacite_metadata(
-        self, guid, mock_datacite, identifiers_json, temp_dir
-    ):
-        xml = run(write_datacite_metadata(guid, temp_dir))
+    def test_get_datacite_metadata(self, guid, mock_datacite, temp_dir, metadata):
+        xml = run(write_datacite_metadata(guid, temp_dir, metadata))
         assert xml == "pretend this is XML."
 
 
@@ -271,7 +271,9 @@ class TestMetadata:
 
     @pytest.fixture
     def metadata(self):
-        with open(os.path.join(HERE, "fixtures/root-registration.json"), "rb") as fp:
+        with open(
+            os.path.join(HERE, "fixtures/metadata-resp-with-embeds.json"), "rb"
+        ) as fp:
             return json.loads(fp.read())
 
     @pytest.fixture
@@ -291,9 +293,42 @@ class TestMetadata:
                 fp.write(json_fp.read())
         yield
 
+    @pytest.fixture
+    def institutions_json(self):
+        with open(os.path.join(HERE, "fixtures/institutions.json"), "rb") as fp:
+            return fp.read()
+
+    @pytest.fixture
+    def biblio_contribs(self):
+        with open(os.path.join(HERE, "fixtures/biblio-contribs.json"), "rb") as fp:
+            return fp.read()
+
     def test_format_metadata_for_ia_item(
-        self, metadata, registration_children_sparse, mock_osf_api
+        self,
+        metadata,
+        registration_children_sparse,
+        mock_osf_api,
+        institutions_json,
+        biblio_contribs,
     ):
+        mock_osf_api.add(
+            responses.GET,
+            f"{settings.OSF_API_URL}v2/registrations/pkdm6/children/"
+            f"?fields%5Bregistrations%5D=id",
+            body=registration_children_sparse,
+        )
+        mock_osf_api.add(
+            responses.GET,
+            f"{settings.OSF_API_URL}v2/registrations/8gqkv/contributors/"
+            f"?filter%5Bbibliographic%5D=True"
+            f"&fields%5Busers%5D=full_name",
+            body=biblio_contribs,
+        )
+        mock_osf_api.add(
+            responses.GET,
+            f"{settings.OSF_API_URL}v2/registrations/8gqkv/institutions/",
+            body=institutions_json,
+        )
         mock_osf_api.add(
             responses.GET,
             f"{settings.OSF_API_URL}v2/registrations/pkdm6/children/?fields%5Bregistrations%5D=id",
@@ -301,17 +336,25 @@ class TestMetadata:
         )
         metadata = run(format_metadata_for_ia_item(metadata))
         assert metadata == {
-            "title": "Root Registration with no children",
-            "description": "This is a fake registration to test how to structure our project.",
-            "date_created": "2021-02-08",
+            "title": "Test Component",
+            "description": "Test Description",
+            "date_created": "2017-12-20",
             "contributor": "Center for Open Science",
-            "children": [
-                f"https://archive.org/details/osf-registrations-hu68d-{ID_VERSION}",
-                f"https://archive.org/details/osf-registrations-puxmb-{ID_VERSION}",
-            ],
-            "license": None,
-            "tags": None,
             "category": "",
+            "license": "https://creativecommons.org/publicdomain/zero/1.0/legalcode",
+            "tags": [],
+            "contributors": ["John Tordoff"],
+            "article_doi": "",
+            "registration_doi": "10.70102/osf.io/guid0",
+            "children": [
+                f"https://archive.org/details/osf-registrations-hbs3p-{ID_VERSION}",
+                f"https://archive.org/details/osf-registrations-ec9db-{ID_VERSION}",
+            ],
+            "registry": "OSF Registries",
+            "registration_schema": "Open-Ended Registration",
+            "registered_from": "http://localhost:8000/v2/nodes/g752b/",
+            "affiliated_institutions": ["The Center For Open Science [Stage]"],
+            "parent": f"https://archive.org/details/osf-registrations-dgkjr-{ID_VERSION}",
         }
 
     def test_modify_metadata(self, temp_dir, test_node_json):
@@ -387,7 +430,9 @@ class TestUpload:
 
     @pytest.fixture
     def metadata(self):
-        with open(os.path.join(HERE, "fixtures/root-registration.json"), "rb") as fp:
+        with open(
+            os.path.join(HERE, "fixtures/metadata-resp-with-embeds.json"), "rb"
+        ) as fp:
             return json.loads(fp.read())
 
     @pytest.fixture
@@ -402,6 +447,16 @@ class TestUpload:
         ) as fp:
             return fp.read()
 
+    @pytest.fixture
+    def institutions_json(self):
+        with open(os.path.join(HERE, "fixtures/institutions.json"), "rb") as fp:
+            return fp.read()
+
+    @pytest.fixture
+    def biblio_contribs(self):
+        with open(os.path.join(HERE, "fixtures/biblio-contribs.json"), "rb") as fp:
+            return fp.read()
+
     def test_upload(
         self,
         mock_ia_client,
@@ -409,12 +464,27 @@ class TestUpload:
         guid,
         zip_data,
         registration_children_sparse,
+        biblio_contribs,
         metadata,
+        institutions_json,
     ):
         mock_osf_api.add(
             responses.GET,
-            f"{settings.OSF_API_URL}v2/registrations/pkdm6/children/?fields%5Bregistrations%5D=id",
+            f"{settings.OSF_API_URL}v2/registrations/8gqkv/children/"
+            f"?fields%5Bregistrations%5D=id",
             body=registration_children_sparse,
+        )
+        mock_osf_api.add(
+            responses.GET,
+            f"{settings.OSF_API_URL}v2/registrations/8gqkv/contributors/"
+            f"?filter%5Bbibliographic%5D=True"
+            f"&fields%5Busers%5D=full_name",
+            body=biblio_contribs,
+        )
+        mock_osf_api.add(
+            responses.GET,
+            f"{settings.OSF_API_URL}v2/registrations/8gqkv/institutions/",
+            body=institutions_json,
         )
         run(
             upload(
@@ -429,17 +499,25 @@ class TestUpload:
             mock.ANY,
             metadata={
                 "collection": f"collection-osf-registration-providers-osf-{ID_VERSION}",
-                "title": "Root Registration with no children",
-                "description": "This is a fake registration to test how to structure our project.",
-                "date_created": "2021-02-08",
+                "title": "Test Component",
+                "description": "Test Description",
+                "date_created": "2017-12-20",
                 "contributor": "Center for Open Science",
                 "category": "",
-                "license": None,
-                "tags": None,
+                "license": "https://creativecommons.org/publicdomain/zero/1.0/legalcode",
+                "tags": [],
+                "contributors": ["John Tordoff"],
+                "article_doi": "",
+                "registration_doi": "10.70102/osf.io/guid0",
                 "children": [
-                    f"https://archive.org/details/osf-registrations-hu68d-{settings.ID_VERSION}",
-                    f"https://archive.org/details/osf-registrations-puxmb-{settings.ID_VERSION}",
+                    f"https://archive.org/details/osf-registrations-hbs3p-{ID_VERSION}",
+                    f"https://archive.org/details/osf-registrations-ec9db-{ID_VERSION}",
                 ],
+                "registry": "OSF Registries",
+                "registration_schema": "Open-Ended Registration",
+                "registered_from": "http://localhost:8000/v2/nodes/g752b/",
+                "affiliated_institutions": ["The Center For Open Science [Stage]"],
+                "parent": "https://archive.org/details/osf-registrations-dgkjr-local_v1",
             },
             secret_key=settings.IA_SECRET_KEY,
             access_key=settings.IA_ACCESS_KEY,
@@ -451,18 +529,33 @@ class TestUpload:
         mock_osf_api,
         guid,
         zip_data,
-        metadata,
         registration_children_sparse,
+        biblio_contribs,
+        metadata,
+        institutions_json,
     ):
         """
         Different providers should get uploaded to different collections
         """
-        metadata["data"]["relationships"]["provider"]["data"]["id"] = "burds"
+        metadata["data"]["embeds"]["provider"]["data"]["id"] = "burds"
 
         mock_osf_api.add(
             responses.GET,
-            f"{settings.OSF_API_URL}v2/registrations/pkdm6/children/?fields%5Bregistrations%5D=id",
+            f"{settings.OSF_API_URL}v2/registrations/8gqkv/children/"
+            f"?fields%5Bregistrations%5D=id",
             body=registration_children_sparse,
+        )
+        mock_osf_api.add(
+            responses.GET,
+            f"{settings.OSF_API_URL}v2/registrations/8gqkv/contributors/"
+            f"?filter%5Bbibliographic%5D=True"
+            f"&fields%5Busers%5D=full_name",
+            body=biblio_contribs,
+        )
+        mock_osf_api.add(
+            responses.GET,
+            f"{settings.OSF_API_URL}v2/registrations/8gqkv/institutions/",
+            body=institutions_json,
         )
         run(
             upload(
@@ -476,17 +569,25 @@ class TestUpload:
             mock.ANY,
             metadata={
                 "collection": f"collection-osf-registration-providers-burds-{ID_VERSION}",
-                "title": "Root Registration with no children",
-                "description": "This is a fake registration to test how to structure our project.",
-                "date_created": "2021-02-08",
+                "title": "Test Component",
+                "description": "Test Description",
+                "date_created": "2017-12-20",
                 "contributor": "Center for Open Science",
                 "category": "",
-                "license": None,
-                "tags": None,
+                "license": "https://creativecommons.org/publicdomain/zero/1.0/legalcode",
+                "tags": [],
+                "contributors": ["John Tordoff"],
+                "article_doi": "",
+                "registration_doi": "10.70102/osf.io/guid0",
                 "children": [
-                    "https://archive.org/details/osf-registrations-hu68d-local_v1",
-                    "https://archive.org/details/osf-registrations-puxmb-local_v1",
+                    f"https://archive.org/details/osf-registrations-hbs3p-{ID_VERSION}",
+                    f"https://archive.org/details/osf-registrations-ec9db-{ID_VERSION}",
                 ],
+                "registry": "OSF Registries",
+                "registration_schema": "Open-Ended Registration",
+                "registered_from": "http://localhost:8000/v2/nodes/g752b/",
+                "affiliated_institutions": ["The Center For Open Science [Stage]"],
+                "parent": "https://archive.org/details/osf-registrations-dgkjr-local_v1",
             },
             secret_key=settings.IA_SECRET_KEY,
             access_key=settings.IA_ACCESS_KEY,

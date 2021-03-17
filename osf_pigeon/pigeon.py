@@ -46,10 +46,8 @@ def get_provider_id(metadata):
     :param guid:
     :return:
     """
-    return (
-        f"collection-osf-registration-providers"
-        f'-{metadata["data"]["relationships"]["provider"]["data"]["id"]}-{settings.ID_VERSION}'
-    )
+    return f'collection-osf-registration-providers-' \
+           f'{metadata["data"]["embeds"]["provider"]["data"]["id"]}-{settings.ID_VERSION}'
 
 
 async def get_and_write_file_data_to_temp(from_url, to_dir, name):
