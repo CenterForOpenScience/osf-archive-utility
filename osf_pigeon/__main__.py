@@ -3,23 +3,9 @@ import argparse
 import requests
 from sanic import Sanic
 from sanic.response import json
-from osf_pigeon.pigeon import main, sync_metadata, get_id
+from osf_pigeon.pigeon import main, sync_metadata, get_id, run
 from concurrent.futures import ThreadPoolExecutor
 from sanic.log import logger
-from asyncio import events
-
-
-def run(main):
-    loop = events.new_event_loop()
-    try:
-        events.set_event_loop(loop)
-        return loop.run_until_complete(main)
-    finally:
-        try:
-            loop.run_until_complete(loop.shutdown_asyncgens())
-        finally:
-            events.set_event_loop(None)
-            loop.close()
 
 
 app = Sanic("osf_pigeon")

@@ -43,12 +43,10 @@ class TestGetAndWriteFileDataToTemp:
         self, mock_waterbutler, guid, zip_name, zip_data
     ):
         with tempfile.TemporaryDirectory() as temp_dir:
-            run(
-                get_and_write_file_data_to_temp(
-                    f"{settings.OSF_FILES_URL}v1/resources/{guid}/providers/osfstorage/?zip=",
-                    temp_dir,
-                    zip_name,
-                )
+            get_and_write_file_data_to_temp(
+                f"{settings.OSF_FILES_URL}v1/resources/{guid}/providers/osfstorage/?zip=",
+                temp_dir,
+                zip_name,
             )
             assert len(os.listdir(temp_dir)) == 1
             assert os.listdir(temp_dir)[0] == zip_name

@@ -6,7 +6,6 @@ from io import BytesIO
 from datetime import datetime
 import internetarchive
 from asyncio import events
-from concurrent.futures import ThreadPoolExecutor
 
 import tempfile
 import math
@@ -46,11 +45,13 @@ def get_provider_id(metadata):
     :param guid:
     :return:
     """
-    return f'collection-osf-registration-providers-' \
-           f'{metadata["data"]["embeds"]["provider"]["data"]["id"]}-{settings.ID_VERSION}'
+    return (
+        f"collection-osf-registration-providers-"
+        f'{metadata["data"]["embeds"]["provider"]["data"]["id"]}-{settings.ID_VERSION}'
+    )
 
 
-async def get_and_write_file_data_to_temp(from_url, to_dir, name):
+def get_and_write_file_data_to_temp(from_url, to_dir, name):
     with get_with_retry(from_url) as response:
         with open(os.path.join(to_dir, name), "wb") as fp:
             for chunk in response.iter_content():
@@ -136,7 +137,6 @@ async def format_metadata_for_ia_item(json_metadata):
         "date_created": date_time.strftime("%Y-%m-%d"),
         "contributor": "Center for Open Science",
         "category": json_metadata["data"]["attributes"]["category"],
-        "license": embeds["license"]["data"]["attributes"]["url"],
         "tags": json_metadata["data"]["attributes"]["tags"],
         "contributors": biblo_contrbs,
         "article_doi": f"urn:doi:{article_doi}" if article_doi else "",
@@ -155,6 +155,9 @@ async def format_metadata_for_ia_item(json_metadata):
             institution["attributes"]["name"] for institution in institutions
         ],
     }
+
+    if not embeds["license"].get("errors"):
+        ia_metadata["license"] = embeds["license"]["data"]["attributes"]["url"]
 
     if json_metadata["data"]["relationships"]["parent"]["data"]:
         parent_id = get_id(
@@ -375,7 +378,7 @@ async def get_registration_metadata(guid, temp_dir, filename):
 
 async def get_raw_data(guid, temp_dir):
     try:
-        await get_and_write_file_data_to_temp(
+        get_and_write_file_data_to_temp(
             from_url=f"{settings.OSF_FILES_URL}v1/resources/{guid}/providers/osfstorage/?zip=",
             to_dir=temp_dir,
             name="archived_files.zip",
@@ -420,11 +423,7 @@ async def main(guid):
         if file_count:
             tasks.append(get_raw_data(guid, temp_dir))
 
-        with ThreadPoolExecutor(max_workers=5) as pool:
-            running_tasks = [pool.submit(run, task) for task in tasks]
-            for task in running_tasks:
-                task.result()
-
+        done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
         bagit.make_bag(temp_dir)
         bag = bagit.Bag(temp_dir)
         assert bag.is_valid()
