@@ -13,7 +13,6 @@ from osf_pigeon.pigeon import (
     get_and_write_json_to_temp,
     create_zip_data,
     format_metadata_for_ia_item,
-    modify_metadata_with_retry,
     get_contributors,
     sync_metadata,
     upload,
@@ -355,19 +354,6 @@ class TestMetadata:
             "parent": f"https://archive.org/details/osf-registrations-dgkjr-{ID_VERSION}",
         }
 
-    def test_modify_metadata(self, temp_dir, test_node_json):
-        metadata = {
-            "title": "Test Component",
-            "description": "Test Description",
-            "date": "2017-12-20",
-            "contributor": "Center for Open Science",
-        }
-        mock_ia_item = mock.Mock()
-        modify_metadata_with_retry(mock_ia_item, metadata)
-
-        assert len(mock_ia_item.mock_calls) == 1
-        assert mock_ia_item.mock_calls[0][1][0] == metadata
-
     def test_modify_metadata_only(self, mock_ia_client, guid):
         metadata = {
             "title": "Test Component",
@@ -392,29 +378,10 @@ class TestMetadata:
         mock_ia_client.session.get_item.assert_called_with("guid0")
 
         metadata["noindex"] = True
+        metadata[
+            "description"
+        ] = "Note this registration has been withdrawn: \nTest Description"
         mock_ia_client.item.modify_metadata.assert_called_with(metadata)
-
-    def test_modify_metadata_with_retry(self, temp_dir, test_node_json):
-        metadata = {
-            "title": "Test Component",
-            "description": "Test Description",
-            "date": "2017-12-20",
-            "contributor": "Center for Open Science",
-        }
-        mock_ia_item = mock.Mock()
-        mock_ia_item.modify_metadata = mock.Mock(
-            side_effect=internetarchive.exceptions.ItemLocateError()
-        )
-
-        with pytest.raises(internetarchive.exceptions.ItemLocateError):
-            modify_metadata_with_retry(
-                mock_ia_item, metadata, sleep_time=1  # 1 second for fast tests
-            )
-
-        assert len(mock_ia_item.mock_calls) == 3
-
-        for call in mock_ia_item.mock_calls:
-            assert call[1][0] == metadata
 
 
 class TestUpload:

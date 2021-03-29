@@ -3,7 +3,7 @@ import argparse
 import requests
 from sanic import Sanic
 from sanic.response import json
-from osf_pigeon.pigeon import main, sync_metadata, get_id, run
+from osf_pigeon import pigeon
 from concurrent.futures import ThreadPoolExecutor
 from sanic.log import logger
 
@@ -32,15 +32,15 @@ async def index(request):
 
 @app.route("/archive/<guid>", methods=["GET", "POST"])
 async def archive(request, guid):
-    future = pigeon_jobs.submit(run, main(guid))
+    future = pigeon_jobs.submit(pigeon.run, pigeon.archive(guid))
     future.add_done_callback(task_done)
     return json({guid: future._state})
 
 
 @app.route("/metadata/<guid>", methods=["POST"])
 async def set_metadata(request, guid):
-    item_name = get_id(guid)
-    future = pigeon_jobs.submit(sync_metadata, item_name, request.json)
+    item_name = pigeon.REG_ID_TEMPLATE.format(guid=guid)
+    future = pigeon_jobs.submit(pigeon.sync_metadata, item_name, request.json)
     future.add_done_callback(task_done)
     return json({guid: future._state})
 

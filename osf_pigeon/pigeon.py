@@ -1,5 +1,4 @@
 import re
-import time
 import json
 import os
 from io import BytesIO
@@ -22,33 +21,10 @@ import bagit
 from ratelimit import sleep_and_retry
 from ratelimit.exception import RateLimitException
 
-
-def get_id(guid):
-    """
-    Naming scheme for osf items
-    `{django app name}-{type}-{guid/_id}-{version number}`
-
-    :param guid:
-    :return:
-    """
-    return f"osf-registrations-{guid}-{settings.ID_VERSION}"
-
-
-def get_provider_id(metadata):
-    """
-    Naming scheme for osf items
-    `{django app name}-{type}-{guid/_id}-{version number}`
-
-    Collections have the prefix, `collection-` in the current scheme providers are always
-    collections.
-
-    :param guid:
-    :return:
-    """
-    return (
-        f"collection-osf-registration-providers-"
-        f'{metadata["data"]["embeds"]["provider"]["data"]["id"]}-{settings.ID_VERSION}'
-    )
+REG_ID_TEMPLATE = f"osf-registrations-{{guid}}-{settings.ID_VERSION}"
+PROVIDER_ID_TEMPLATE = (
+    f"collection-osf-registration-providers-{{guid}}-{settings.ID_VERSION}"
+)
 
 
 def get_and_write_file_data_to_temp(from_url, to_dir, name):
@@ -142,7 +118,8 @@ async def format_metadata_for_ia_item(json_metadata):
         "article_doi": f"urn:doi:{article_doi}" if article_doi else "",
         "registration_doi": doi,
         "children": [
-            f'https://archive.org/details/{get_id(child["id"])}' for child in children
+            f'https://archive.org/details/{REG_ID_TEMPLATE.format(guid=child["id"])}'
+            for child in children
         ],
         "registry": embeds["provider"]["data"]["attributes"]["name"],
         "registration_schema": embeds["registration_schema"]["data"]["attributes"][
@@ -160,24 +137,12 @@ async def format_metadata_for_ia_item(json_metadata):
         ia_metadata["license"] = embeds["license"]["data"]["attributes"]["url"]
 
     if json_metadata["data"]["relationships"]["parent"]["data"]:
-        parent_id = get_id(
-            json_metadata["data"]["relationships"]["parent"]["data"]["id"]
+        parent_id = REG_ID_TEMPLATE.format(
+            guid=json_metadata["data"]["relationships"]["parent"]["data"]["id"]
         )
         ia_metadata["parent"] = f"https://archive.org/details/{parent_id}"
 
     return ia_metadata
-
-
-def modify_metadata_with_retry(ia_item, metadata, retries=2, sleep_time=60):
-    try:
-        ia_item.modify_metadata(metadata.copy())
-    except internetarchive.exceptions.ItemLocateError as e:
-        if "Item cannot be located because it is dark" in str(e) and retries > 0:
-            time.sleep(sleep_time)
-            retries -= 1
-            modify_metadata_with_retry(ia_item, metadata, retries, sleep_time)
-        else:
-            raise e
 
 
 async def write_datacite_metadata(guid, temp_dir, metadata):
@@ -308,8 +273,11 @@ def get_ia_item(guid):
 def sync_metadata(item_name, metadata):
     ia_item = get_ia_item(item_name)
     if metadata.get("moderation_state") == "withdrawn":  # withdrawn == not searchable
+        metadata["description"] = (
+            "Note this registration has been withdrawn: \n" + metadata["description"]
+        )
         metadata["noindex"] = True
-    modify_metadata_with_retry(ia_item, metadata)
+    ia_item.modify_metadata(metadata.copy())
 
     return metadata, ia_item.urls.details
 
@@ -346,9 +314,14 @@ def create_subcollection(collection_id, metadata=None, parent_collection=None):
 async def upload(item_name, data, metadata):
     ia_item = get_ia_item(item_name)
     ia_metadata = await format_metadata_for_ia_item(metadata)
+    provider_id = metadata["data"]["embeds"]["provider"]["data"]["id"]
+
     ia_item.upload(
         data,
-        metadata={"collection": get_provider_id(metadata), **ia_metadata},
+        metadata={
+            "collection": PROVIDER_ID_TEMPLATE.format(guid=provider_id),
+            **ia_metadata,
+        },
         access_key=settings.IA_ACCESS_KEY,
         secret_key=settings.IA_SECRET_KEY,
     )
@@ -389,8 +362,10 @@ async def get_raw_data(guid, temp_dir):
         )
 
 
-async def main(guid):
-    with tempfile.TemporaryDirectory(prefix=get_id(guid)) as temp_dir:
+async def archive(guid):
+    with tempfile.TemporaryDirectory(
+        prefix=REG_ID_TEMPLATE.format(guid=guid)
+    ) as temp_dir:
         # await first to check if withdrawn
         metadata = await get_registration_metadata(guid, temp_dir, "registration.json")
 
@@ -429,16 +404,16 @@ async def main(guid):
         assert bag.is_valid()
 
         zip_data = create_zip_data(temp_dir)
-        ia_item = await upload(get_id(guid), zip_data, metadata)
+        ia_item = await upload(REG_ID_TEMPLATE.format(guid=guid), zip_data, metadata)
 
         return guid, ia_item.urls.details
 
 
-def run(main):
+def run(func):
     loop = events.new_event_loop()
     try:
         events.set_event_loop(loop)
-        return loop.run_until_complete(main)
+        return loop.run_until_complete(func)
     finally:
         try:
             loop.run_until_complete(loop.shutdown_asyncgens())

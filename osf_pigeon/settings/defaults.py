@@ -13,8 +13,6 @@ DATACITE_PREFIX = "10.17605"
 
 HOST = "0.0.0.0"
 
-ID_VERSION = "v1"
-
 PORT = 2020
 
 ENV = {
