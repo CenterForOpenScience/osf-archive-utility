@@ -38,7 +38,7 @@ async def archive(request, guid):
 
 
 @app.route("/metadata/<guid>", methods=["POST"])
-async def metadata(request, guid):
+async def set_metadata(request, guid):
     item_name = get_id(guid)
     future = pigeon_jobs.submit(sync_metadata, item_name, request.json)
     future.add_done_callback(task_done)
