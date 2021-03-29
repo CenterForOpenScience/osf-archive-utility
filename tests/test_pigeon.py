@@ -18,7 +18,6 @@ from osf_pigeon.pigeon import (
     upload,
     write_datacite_metadata,
 )
-import internetarchive
 import zipfile
 from osf_pigeon.settings import ID_VERSION
 

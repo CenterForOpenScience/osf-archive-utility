@@ -11,7 +11,6 @@ import math
 import asyncio
 import requests
 
-from typing import Tuple, Dict
 from datacite import DataCiteMDSClient
 from datacite.errors import DataCiteNotFoundError
 
@@ -59,8 +58,27 @@ async def format_metadata_for_ia_item(json_metadata):
     """
     This is meant to take the response JSON metadata and format it for IA buckets, this is not
     used to generate JSON to be uploaded as raw data into the buckets.
-    :param json_metadata:
-    :return:
+    :param json_metadata: metadata from OSF registration view contains attributes and relationship
+    urls.
+
+    :return: ia_metadata the metadata for an IA bucket. Should include the following if they are
+     not null:
+        - title
+        - description
+        - date_created
+        - contributor
+        - category
+        - tags
+        - contributors
+        - article_doi
+        - registration_doi
+        - children
+        - registry
+        - registration_schema
+        - registered_from
+        - affiliated_institutions
+        - license
+        - parent
     """
 
     date_string = json_metadata["data"]["attributes"]["date_created"]
@@ -177,10 +195,7 @@ async def write_datacite_metadata(guid, temp_dir, metadata):
 
 
 @sleep_and_retry
-def get_with_retry(
-    url, retry_on: Tuple[int] = (), sleep_period: int = None, headers: Dict = None
-) -> requests.Response:
-
+def get_with_retry(url, retry_on=(), sleep_period=None, headers=None):
     if not headers:
         headers = {}
 
@@ -287,8 +302,10 @@ def create_subcollection(collection_id, metadata=None, parent_collection=None):
     The expected sub-collection hierarchy is as follows top-level OSF collection -> provider
     collection -> collection for nodes with multiple children -> all only child nodes
 
+    :param collection_id: the IA item name for the collections to be created
     :param metadata: dict should attributes for the provider's sub-collection is being created
     :param parent_collection: str the name of the  sub-collection's parent
+
     :return:
     """
     if metadata is None:
@@ -409,11 +426,11 @@ async def archive(guid):
         return guid, ia_item.urls.details
 
 
-def run(func):
+def run(coroutine):
     loop = events.new_event_loop()
     try:
         events.set_event_loop(loop)
-        return loop.run_until_complete(func)
+        return loop.run_until_complete(coroutine)
     finally:
         try:
             loop.run_until_complete(loop.shutdown_asyncgens())

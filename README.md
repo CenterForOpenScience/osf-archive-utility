@@ -35,52 +35,15 @@ This should be able to export registrations from
 Assuming the registration is fully public and the DOI has been minted properly at datacite. 
 
 
-Run from package
+Run
 ============
 
-Simply import the module and enter a guid with credentials::
+Simply install and run from commandline
 
 ```
- from osf_pigeon.pigeon import main
-
- main(
-    'guid0',
-    datacite_username='test_datacite_username',
-    datacite_password='test_datacite_password',
-    datacite_prefix='test_datacite_prefix',
-    ia_access_key='test_datacite_password',
-    ia_secret_key='test_datacite_password',
- )
+    python3 -m osf_python --env=staging
 ```
-That's it!
-
-
-Sync Metadata without files
-============
-
-```
- from osf_pigeon.pigeon import sync_metadata
-
- sync_metadata(
-    'guid0',
-    ia_access_key='test_datacite_password',
-    ia_secret_key='test_datacite_password',
-    metadata={
-        'title': 'This is the title',
-        'anything': 'This is isn't validated'
-    }
-)
-```
-
-The IA bucket may take several minutes to reflect changes.
-
-Run as script
-============
-
-To run as script just -m to execute the module:
-```
- python3 -m osf_pigeon -g u8p3q 
-```
+That's it! 
 
 Running in development
 ========================
