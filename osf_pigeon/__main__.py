@@ -13,12 +13,12 @@ pigeon_jobs = ThreadPoolExecutor(max_workers=10, thread_name_prefix="pigeon_jobs
 
 
 def task_done(future):
-    if future._exception:
-        exception = future._exception
+    if future.exception():
+        exception = future.exception()
         exception = str(exception)
         logger.debug(f"ERROR:{exception}")
-    if future._result:
-        guid, url = future._result
+    if future.result():
+        guid, url = future.result()
         resp = requests.post(
             f"{settings.OSF_API_URL}_/ia/{guid}/done/", json={"IA_url": url}
         )
