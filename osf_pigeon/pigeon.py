@@ -440,7 +440,7 @@ async def archive(guid):
                 )
             )
 
-        done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
+        await asyncio.gather(*tasks)
 
         bagit.make_bag(temp_dir)
         bag = bagit.Bag(temp_dir)

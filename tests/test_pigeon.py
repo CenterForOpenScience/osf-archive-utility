@@ -1,7 +1,6 @@
 import os
 import json
 import pytest
-import mock
 from osf_pigeon import settings
 
 import tempfile
