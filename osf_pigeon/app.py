@@ -28,7 +28,7 @@ def handle_exception(future):
 
 
 def archive_task_done(future):
-    if future._result and not future._exception:
+    if future.result() and not future.exception():
         ia_item, guid = future.result()
         resp = requests.post(
             f"{settings.OSF_API_URL}_/ia/{guid}/done/",
@@ -38,7 +38,7 @@ def archive_task_done(future):
 
 
 def metadata_task_done(future):
-    if future._result and not future._exception:
+    if future.result() and not future.exception():
         ia_item, updated_metadata = future.result()
         app.logger.info(f"{ia_item} updated metadata {updated_metadata}")
 
@@ -56,6 +56,12 @@ async def logs(request):
 @routes.get("/archive/{guid}")
 @routes.post("/archive/{guid}")
 async def archive(request):
+    """
+    This endpoint is called by osf.io to begin the archive process for a registration, downloading,
+    copying data and uploading it to IA.
+    :param request:
+    :return: json_response this just sends a simple message showing the request was recieved
+    """
     guid = request.match_info["guid"]
     future = pigeon_jobs.submit(pigeon.run, pigeon.archive(guid))
     future.add_done_callback(handle_exception)
@@ -65,6 +71,12 @@ async def archive(request):
 
 @routes.post("/metadata/{guid}")
 async def set_metadata(request):
+    """
+    This endpoint recieves json from osf.io when a registration is updated to sync IA item
+    metadata with the osf registration.
+    :param request:
+    :return:
+    """
     guid = request.match_info["guid"]
     metadata = await request.json()
     future = pigeon_jobs.submit(pigeon.sync_metadata, guid, metadata)

@@ -9,12 +9,12 @@ DATACITE_URL = "https://mds.test.datacite.org/"
 DOI_FORMAT = "{prefix}/fk2osf.io/{guid}"
 OSF_COLLECTION_NAME = "cos-dev-sandbox"
 ID_VERSION = "test_v1"
-DATACITE_USERNAME = 'test-datacite-username'
-DATACITE_PASSWORD = 'test-datacite-password'
+DATACITE_USERNAME = "test-datacite-username"
+DATACITE_PASSWORD = "test-datacite-password"
 
-IA_ACCESS_KEY = 'Clyde Simmons is underrated'
-IA_SECRET_KEY = 'Ben Simmons is overrated'
-OSF_BEARER_TOKEN = 'Temple U is rated'
+IA_ACCESS_KEY = "Clyde Simmons is underrated"
+IA_SECRET_KEY = "Ben Simmons is overrated"
+OSF_BEARER_TOKEN = "Temple U is rated"
 
 REG_ID_TEMPLATE = f"osf-registrations-{{guid}}-{ID_VERSION}"
 PROVIDER_ID_TEMPLATE = f"osf-registration-providers-{{provider_id}}-{ID_VERSION}"

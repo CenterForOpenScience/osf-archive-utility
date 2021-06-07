@@ -43,9 +43,10 @@ class TestStreamFilesToDir:
                     temp_dir,
                     zip_name,
                 )
-                assert len(os.listdir(temp_dir)) == 1
-                assert os.listdir(temp_dir)[0] == zip_name
-                assert open(os.path.join(temp_dir, zip_name), "rb").read() == zip_data
+
+            assert len(os.listdir(temp_dir)) == 1
+            assert os.listdir(temp_dir)[0] == zip_name
+            assert open(os.path.join(temp_dir, zip_name), "rb").read() == zip_data
 
 
 class TestDumpJSONFilesToDir:
@@ -309,7 +310,7 @@ class TestMetadata:
                 "source": "http://localhost:5000/g752b",
                 "affiliated_institutions": ["The Center For Open Science [Stage]"],
                 "parent": f"https://archive.org/details/osf-registrations-dgkjr-"
-                          f"{settings.ID_VERSION}",
+                f"{settings.ID_VERSION}",
             }
 
     def test_modify_metadata_only(self, mock_ia_client, guid):
@@ -421,7 +422,7 @@ class TestUpload:
 
             mock_ia_client.session.get_item.assert_called_with("guid0")
             mock_ia_client.item.upload.assert_called_with(
-                {'bag.zip': os.path.join(temp_dir, "bag.zip")},
+                f"{temp_dir}/bag.zip",
                 metadata={
                     "collection": f"osf-registration-providers-osf-{settings.ID_VERSION}",
                     "publisher": "Center for Open Science",
@@ -445,7 +446,7 @@ class TestUpload:
                         f"osf-registrations-puxmb-{settings.ID_VERSION}",
                     ],
                     "parent": f"https://archive.org/details/"
-                              f"osf-registrations-dgkjr-{settings.ID_VERSION}",
+                    f"osf-registrations-dgkjr-{settings.ID_VERSION}",
                     "license": "https://creativecommons.org/publicdomain/zero/1.0/legalcode",
                 },
                 secret_key=settings.IA_SECRET_KEY,
@@ -492,7 +493,7 @@ class TestUpload:
             )
             mock_ia_client.session.get_item.assert_called_with("guid0")
             mock_ia_client.item.upload.assert_called_with(
-                {'bag.zip': os.path.join(temp_dir, "bag.zip")},
+                f"{temp_dir}/bag.zip",
                 metadata={
                     "collection": f"osf-registration-providers-burds-{settings.ID_VERSION}",
                     "publisher": "Center for Open Science",
@@ -516,7 +517,7 @@ class TestUpload:
                         f"osf-registrations-puxmb-{settings.ID_VERSION}",
                     ],
                     "parent": f"https://archive.org/details/"
-                              f"osf-registrations-dgkjr-{settings.ID_VERSION}",
+                    f"osf-registrations-dgkjr-{settings.ID_VERSION}",
                     "license": "https://creativecommons.org/publicdomain/zero/1.0/legalcode",
                 },
                 secret_key=settings.IA_SECRET_KEY,

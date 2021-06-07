@@ -36,16 +36,12 @@ async def dump_json_to_dir(from_url, to_dir, name, parse_json=None):
 
 
 def create_zip(temp_dir):
-    files_to_zip = []
-    for root, dirs, files in os.walk(temp_dir):
-        for file in files:
-            file_path = os.path.join(root, file)
-            file_name = re.sub(f"^{temp_dir}", "", file_path)
-            files_to_zip.append((file_path, file_name))
-
-    with zipfile.ZipFile(os.path.join(temp_dir, 'bag.zip'), "w") as fp:
-        for file_path, file_name in files_to_zip:
-            fp.write(file_path, arcname=file_name)
+    with zipfile.ZipFile(os.path.join(temp_dir, "bag.zip"), "w") as fp:
+        for root, dirs, files in os.walk(os.path.join(temp_dir, "bag")):
+            for file in files:
+                file_path = os.path.join(root, file)
+                file_name = re.sub(f"^{temp_dir}", "", file_path)
+                fp.write(file_path, arcname=file_name)
 
 
 async def get_relationship_attribute(key, url, func):
@@ -90,7 +86,7 @@ async def get_metadata_for_ia_item(json_metadata):
         get_relationship_attribute(
             "creator",
             f'{settings.OSF_API_URL}v2/registrations/{json_metadata["data"]["id"]}/contributors/'
-            f'?filter[bibliographic]=true&',
+            f"?filter[bibliographic]=true&",
             lambda contrib: contrib["embeds"]["users"]["data"]["attributes"][
                 "full_name"
             ],
@@ -108,8 +104,8 @@ async def get_metadata_for_ia_item(json_metadata):
         get_relationship_attribute(
             "children",
             f'{settings.OSF_API_URL}v2/registrations/{json_metadata["data"]["id"]}/children/',
-            lambda child: f'https://archive.org/details/'
-                          f'{settings.REG_ID_TEMPLATE.format(guid=child["id"])}',
+            lambda child: f"https://archive.org/details/"
+            f'{settings.REG_ID_TEMPLATE.format(guid=child["id"])}',
         ),
     ]
 
@@ -366,7 +362,7 @@ async def upload(item_name, temp_dir, metadata):
     ia_metadata = await get_metadata_for_ia_item(metadata)
     provider_id = metadata["data"]["embeds"]["provider"]["data"]["id"]
     ia_item.upload(
-        {'bag.zip': os.path.join(temp_dir, 'bag.zip')},
+        os.path.join(temp_dir, "bag.zip"),
         metadata={
             "collection": settings.PROVIDER_ID_TEMPLATE.format(provider_id=provider_id),
             **ia_metadata,
@@ -410,19 +406,19 @@ async def archive(guid):
             dump_json_to_dir(
                 from_url=f"{settings.OSF_API_URL}v2/registrations/{guid}/wikis/"
                 f"?page[size]=100",
-                to_dir=temp_dir,
+                to_dir=os.path.join(temp_dir, "bag"),
                 name="wikis.json",
             ),
             dump_json_to_dir(
                 from_url=f"{settings.OSF_API_URL}v2/registrations/{guid}/logs/"
                 f"?page[size]=100",
-                to_dir=temp_dir,
+                to_dir=os.path.join(temp_dir, "bag"),
                 name="logs.json",
             ),
             dump_json_to_dir(
                 from_url=f"{settings.OSF_API_URL}v2/registrations/{guid}/contributors/"
                 f"?page[size]=100",
-                to_dir=temp_dir,
+                to_dir=os.path.join(temp_dir, "bag"),
                 name="contributors.json",
                 parse_json=get_additional_contributor_info,
             ),
@@ -435,15 +431,15 @@ async def archive(guid):
             tasks.append(
                 stream_files_to_dir(
                     f"{settings.OSF_FILES_URL}v1/resources/{guid}/providers/osfstorage/?zip=",
-                    temp_dir,
+                    os.path.join(temp_dir, "bag"),
                     "archived_files.zip",
                 )
             )
 
         await asyncio.gather(*tasks)
 
-        bagit.make_bag(temp_dir)
-        bag = bagit.Bag(temp_dir)
+        bagit.make_bag(os.path.join(temp_dir, "bag"))
+        bag = bagit.Bag(os.path.join(temp_dir, "bag"))
         assert bag.is_valid()
 
         create_zip(temp_dir)
