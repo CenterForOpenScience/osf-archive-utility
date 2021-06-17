@@ -17,7 +17,7 @@ sentry_sdk.init(
 pigeon_jobs = ThreadPoolExecutor(max_workers=1, thread_name_prefix="pigeon_jobs")
 app = web.Application()
 routes = web.RouteTableDef()
-logging.basicConfig(filename="pigeon.log", level=logging.DEBUG)
+logging.basicConfig(level=logging.DEBUG)
 
 
 def handle_exception(future):
@@ -46,11 +46,6 @@ def metadata_task_done(future):
 @routes.get("/")
 async def index(request):
     return web.json_response({"🐦": "👍"})
-
-
-@routes.get("/logs")
-async def logs(request):
-    return web.FileResponse("pigeon.log")
 
 
 @routes.get("/archive/{guid}")
