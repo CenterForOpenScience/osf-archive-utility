@@ -47,7 +47,6 @@ def metadata_task_done(future):
 async def index(request):
     return web.json_response({"🐦": "👍"})
 
-
 @routes.get("/archive/{guid}")
 @routes.post("/archive/{guid}")
 async def archive(request):
