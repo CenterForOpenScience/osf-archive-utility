@@ -32,6 +32,7 @@ def archive_task_done(future):
         ia_item, guid = future.result()
         resp = requests.post(
             f"{settings.OSF_API_URL}_/ia/{guid}/done/",
+            headers={"Authorization": f"Bearer {settings.OSF_BEARER_TOKEN}"},
             json={"ia_url": ia_item.urls.details},
         )
         app.logger.info(f"{ia_item} called back with {resp}")
