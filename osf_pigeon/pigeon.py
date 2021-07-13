@@ -394,9 +394,9 @@ async def archive(guid):
     with tempfile.TemporaryDirectory(
         dir=settings.PIGEON_TEMP_DIR, prefix=settings.REG_ID_TEMPLATE.format(guid=guid)
     ) as temp_dir:
-        # await first to check if withdrawn
-        metadata = await get_registration_metadata(guid, temp_dir, "registration.json")
         os.mkdir(os.path.join(temp_dir, "bag"))
+        # await first to check if withdrawn
+        metadata = await get_registration_metadata(guid, os.path.join(temp_dir, "bag"), "registration.json")
         tasks = [
             write_datacite_metadata(guid, temp_dir, metadata),
             dump_json_to_dir(
