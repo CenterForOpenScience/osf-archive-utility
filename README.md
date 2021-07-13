@@ -20,7 +20,7 @@ and the DOI has been minted by the start of the archive job and the registration
 Install/Run
 ============
 
-Simply set your add your environment settings in `local.py` file 
+Simply set your environment settings in `local.py` file 
 and run with bash command:
 
 ```
@@ -152,7 +152,7 @@ Each archived registration includes four json files and one xml file with metada
  - wiki.json
     - The text and metadata details associated with that registration's wiki.
  - contributors.json
-    - The list of contributor to the registration including extra information about their ORCID identifiers and
+    - The list of contributors to the registration including extra information about their ORCID identifiers and
      affiliated institutions.
   - logs.json
     - A list of all that registrations logs. 
