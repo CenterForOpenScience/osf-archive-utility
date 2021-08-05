@@ -136,8 +136,6 @@ async def get_metadata_for_ia_item(json_metadata):
         ),
         None,
     )
-    osf_url = "/".join(json_metadata["data"]["links"]["html"].split("/")[:3]) + "/"
-
     attributes = json_metadata["data"]["attributes"]
     article_doi = json_metadata["data"]["attributes"]["article_doi"]
     ia_metadata = {
@@ -157,8 +155,8 @@ async def get_metadata_for_ia_item(json_metadata):
         "osf_registration_schema": embeds["registration_schema"]["data"]["attributes"][
             "name"
         ],
-        "source": osf_url
-        + json_metadata["data"]["relationships"]["registered_from"]["data"]["id"],
+        "osf_project": json_metadata["data"]["relationships"]["registered_from"]["links"]["related"]["href"],
+        "source": json_metadata["data"]["links"]["html"],
         **relationship_data,
     }
     return ia_metadata
@@ -377,7 +375,6 @@ async def get_registration_metadata(guid, temp_dir, filename):
     metadata = await get_paginated_data(
         f"{settings.OSF_API_URL}v2/registrations/{guid}/"
         f"?embed=parent"
-        f"&embed=children"
         f"&embed=provider"
         f"&embed=identifiers"
         f"&embed=license"
