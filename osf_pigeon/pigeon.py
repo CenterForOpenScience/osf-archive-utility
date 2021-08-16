@@ -322,7 +322,7 @@ def sync_metadata(guid, metadata):
         "article_doi",
         "affiliated_institutions",
         "license",
-        "moderation_state",
+        "withdrawal_justification",
     ]
 
     invalid_keys = set(metadata.keys()).difference(set(valid_updatable_metadata_keys))
@@ -334,11 +334,8 @@ def sync_metadata(guid, metadata):
 
     item_name = settings.REG_ID_TEMPLATE.format(guid=guid)
     ia_item = get_ia_item(item_name)
-    if (
-        not metadata.get("moderation_state") == "withdrawn"
-    ):  # withdrawn == not searchable
+    if not metadata.get("withdrawal_justification"):  # withdrawn == not searchable
         ia_item.modify_metadata(metadata)
-
     else:
         description = ia_item.metadata.get("description")
         if description:
@@ -348,7 +345,6 @@ def sync_metadata(guid, metadata):
         else:
             metadata["description"] = "This registration has been withdrawn"
 
-        del metadata["moderation_state"]
         ia_item.modify_metadata(metadata)
         ia_item.modify_metadata({"noindex": True})
 
@@ -395,9 +391,9 @@ async def archive(guid):
     with tempfile.TemporaryDirectory(
         dir=settings.PIGEON_TEMP_DIR, prefix=settings.REG_ID_TEMPLATE.format(guid=guid)
     ) as temp_dir:
+        os.mkdir(os.path.join(temp_dir, "bag"))
         # await first to check if withdrawn
-        metadata = await get_registration_metadata(guid, temp_dir, "registration.json")
-
+        metadata = await get_registration_metadata(guid, os.path.join(temp_dir, "bag"), "registration.json")
         tasks = [
             write_datacite_metadata(guid, temp_dir, metadata),
             dump_json_to_dir(
