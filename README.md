@@ -41,7 +41,7 @@ The osf.io and archive.org use a constellation of services for both testing and 
         - DATACITE_PREFIX: 10.17605
         - DATACITE_URL: https://mds.datacite.org/
         - DOI_FORMAT: {prefix}/osf.io/{guid}
-        - OSF_COLLECTION_NAME: yet-to-be-named
+        - OSF_COLLECTION_NAME: osf-registrations
         - ID_VERSION: v1
    - staging
         - OSF_API_URL: https://api.staging.osf.io/
@@ -61,7 +61,7 @@ The osf.io and archive.org use a constellation of services for both testing and 
         - ID_VERSION: local_v1
 
 Setting an `OSF_BEARER_TOKEN` for a registration is not necessary for permissions, but is recommended to avoid 
-rate limiting. Credentials for the Datacite and Internet Archive should be otained via your institution.
+rate limiting. Credentials for the Datacite and Internet Archive should be obtained via your institution.
 
 Tests
 ============
