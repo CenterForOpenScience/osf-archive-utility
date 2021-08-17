@@ -14,7 +14,7 @@ sentry_sdk.init(
     integrations=[AioHttpIntegration()],
 )
 
-pigeon_jobs = ThreadPoolExecutor(max_workers=1, thread_name_prefix="pigeon_jobs")
+pigeon_jobs = ThreadPoolExecutor(max_workers=settings.NUMBER_OF_WORKERS, thread_name_prefix="pigeon_jobs")
 app = web.Application()
 routes = web.RouteTableDef()
 logging.basicConfig(level=logging.DEBUG)

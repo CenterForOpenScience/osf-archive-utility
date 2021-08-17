@@ -14,6 +14,7 @@ DATACITE_URL = os.environ.get("DATACITE_URL")
 DOI_FORMAT = os.environ.get("DOI_FORMAT")
 OSF_COLLECTION_NAME = os.environ.get("OSF_COLLECTION_NAME")
 ID_VERSION = os.environ.get("ID_VERSION")
+NUMBER_OF_WORKERS = os.environ.get('NUMBER_OF_WORKERS')
 
 REG_ID_TEMPLATE = f"osf-registrations-{{guid}}-{ID_VERSION}"
 PROVIDER_ID_TEMPLATE = f"osf-registration-providers-{{provider_id}}-{ID_VERSION}"
