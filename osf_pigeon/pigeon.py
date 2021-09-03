@@ -397,12 +397,6 @@ async def archive(guid):
         tasks = [
             write_datacite_metadata(guid, temp_dir, metadata),
             dump_json_to_dir(
-                from_url=f"{settings.OSF_API_URL}v2/registrations/{guid}/wikis/"
-                f"?page[size]=100",
-                to_dir=os.path.join(temp_dir, "bag"),
-                name="wikis.json",
-            ),
-            dump_json_to_dir(
                 from_url=f"{settings.OSF_API_URL}v2/registrations/{guid}/logs/"
                 f"?page[size]=100",
                 to_dir=os.path.join(temp_dir, "bag"),
@@ -426,6 +420,17 @@ async def archive(guid):
                     f"{settings.OSF_FILES_URL}v1/resources/{guid}/providers/osfstorage/?zip=",
                     os.path.join(temp_dir, "bag"),
                     "archived_files.zip",
+                )
+            )
+
+        wiki_enabled = metadata["data"]["attributes"]["wiki_enabled"]
+        if wiki_enabled:
+            tasks.append(
+                dump_json_to_dir(
+                    from_url=f"{settings.OSF_API_URL}v2/registrations/{guid}/wikis/"
+                    f"?page[size]=100",
+                    to_dir=os.path.join(temp_dir, "bag"),
+                    name="wikis.json",
                 )
             )
 
