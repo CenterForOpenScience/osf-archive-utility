@@ -230,16 +230,21 @@ async def get_additional_contributor_info(response):
     contributor_data_list = []
     for contributor in response["data"]:
         contributor_data = {}
-        embed_data = contributor["embeds"]["users"]["data"]
-        institution_url = embed_data["relationships"]["institutions"]["links"][
-            "related"
-        ]["href"]
-        data = await get_with_retry(institution_url)
-        institution_data = data["data"]
-        institution_list = [
-            institution["attributes"]["name"] for institution in institution_data
-        ]
-        contributor_data["affiliated_institutions"] = institution_list
+        errors = contributor["embeds"]["users"].get('errors')
+        if errors and errors[0]['detail'] == 'The requested user is no longer available.':
+            contributor_data = errors[0]['meta']
+        else:
+            embed_data = contributor["embeds"]["users"]["data"]
+            institution_url = embed_data["relationships"]["institutions"]["links"][
+                "related"
+            ]["href"]
+            data = await get_with_retry(institution_url)
+            institution_data = data["data"]
+            institution_list = [
+                institution["attributes"]["name"] for institution in institution_data
+            ]
+            contributor_data["affiliated_institutions"] = institution_list
+
         contributor.update(contributor_data)
         contributor_data_list.append(contributor)
     response["data"] = contributor_data_list
