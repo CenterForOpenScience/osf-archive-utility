@@ -447,6 +447,7 @@ async def archive(guid):
 
         await asyncio.gather(*tasks)
 
+        os.chdir(temp_dir)  # bagit changes the cwd so set it here again in case it crashed before changing it back.
         bagit.make_bag(os.path.join(temp_dir, "bag"))
         bag = bagit.Bag(os.path.join(temp_dir, "bag"))
         assert bag.is_valid()
