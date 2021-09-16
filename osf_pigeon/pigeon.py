@@ -18,6 +18,8 @@ from datacite.errors import DataCiteNotFoundError
 
 from osf_pigeon import settings
 
+paging_semaphore = asyncio.Semaphore(settings.PAGING_SEMAPHORE)
+
 
 async def stream_files_to_dir(from_url, to_dir, name):
     async with ClientSession() as session:
@@ -220,9 +222,13 @@ async def get_with_retry(url, retry_on=(), sleep_period=None, headers=None):
             return await resp.json()
 
 
-async def get_pages(url, page, result={}, parse_json=None):
+async def get_pages(url, page, result=None, parse_json=None):
+    if result is None:
+        result = {}
     url = f"{url}?page={page}&page={page}"
-    data = await get_with_retry(url, retry_on=(429,))
+    data = {}
+    async with paging_semaphore:
+        data = await get_with_retry(url, retry_on=(429,))
 
     result[page] = data["data"]
 
