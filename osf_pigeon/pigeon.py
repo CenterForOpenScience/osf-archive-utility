@@ -18,8 +18,6 @@ from datacite.errors import DataCiteNotFoundError
 
 from osf_pigeon import settings
 
-paging_semaphore = asyncio.Semaphore(settings.PAGING_SEMAPHORE)
-
 
 async def stream_files_to_dir(from_url, to_dir, name):
     async with ClientSession() as session:
@@ -222,13 +220,16 @@ async def get_with_retry(url, retry_on=(), sleep_period=None, headers=None):
             return await resp.json()
 
 
-async def get_pages(url, page, result=None, parse_json=None):
+async def get_pages(url, page, result=None, parse_json=None, semaphore=None):
     if result is None:
         result = {}
     url = f"{url}?page={page}&page={page}"
     data = {}
-    async with paging_semaphore:
+    if semaphore is None:
         data = await get_with_retry(url, retry_on=(429,))
+    else:
+        async with semaphore:
+            data = await get_with_retry(url, retry_on=(429,))
 
     result[page] = data["data"]
 
@@ -272,6 +273,7 @@ async def get_paginated_data(url, parse_json=None):
         data = await parse_json(data)
 
     if is_paginated:
+        paging_semaphore = asyncio.Semaphore(settings.PAGING_SEMAPHORE)
         result = {1: data["data"]}
         total = data["links"].get("meta", {}).get("total") or data["meta"].get("total")
         per_page = data["links"].get("meta", {}).get("per_page") or data["meta"].get(
@@ -280,7 +282,7 @@ async def get_paginated_data(url, parse_json=None):
 
         pages = math.ceil(int(total) / int(per_page))
         for i in range(1, pages):
-            task = get_pages(url, i + 1, result)
+            task = get_pages(url, i + 1, result=result, semaphore=paging_semaphore)
             tasks.append(task)
 
         await asyncio.gather(*tasks)
