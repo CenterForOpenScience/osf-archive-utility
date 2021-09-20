@@ -15,7 +15,9 @@ DOI_FORMAT = os.environ.get("DOI_FORMAT")
 OSF_COLLECTION_NAME = os.environ.get("OSF_COLLECTION_NAME")
 ID_VERSION = os.environ.get("ID_VERSION")
 MAX_WORKERS = int(os.environ.get('MAX_WORKERS', 1))
+FILES_TIMEOUT = int(os.environ.get('FILES_TIMEOUT', 300))
 PAGING_SEMAPHORE = int(os.environ.get('PAGING_SEMAPHORE', 5))
+
 
 REG_ID_TEMPLATE = f"osf-registrations-{{guid}}-{ID_VERSION}"
 PROVIDER_ID_TEMPLATE = f"osf-registration-providers-{{provider_id}}-{ID_VERSION}"

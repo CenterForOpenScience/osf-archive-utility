@@ -10,7 +10,7 @@ from datetime import datetime
 from asyncio import events
 from ratelimit import sleep_and_retry
 from ratelimit.exception import RateLimitException
-from aiohttp import ClientSession, http_exceptions
+from aiohttp import ClientSession, ClientTimeout, http_exceptions
 
 import internetarchive
 from datacite import DataCiteMDSClient
@@ -20,7 +20,7 @@ from osf_pigeon import settings
 
 
 async def stream_files_to_dir(from_url, to_dir, name):
-    async with ClientSession() as session:
+    async with ClientSession(timeout=ClientTimeout(total=settings.FILES_TIMEOUT)) as session:
         async with session.get(from_url) as resp:
             with open(os.path.join(to_dir, name), "wb") as fp:
                 async for chunk in resp.content.iter_any():
