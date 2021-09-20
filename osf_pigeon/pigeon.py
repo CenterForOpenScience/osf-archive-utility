@@ -51,6 +51,14 @@ async def get_relationship_attribute(key, url, func):
     return {key: list(map(func, data))}
 
 
+def get_contributor_info(contrib):
+    errors = contrib["embeds"]["users"].get('errors')
+    if errors and errors[0]['detail'] == 'The requested user is no longer available.':
+        return errors[0]['meta']['full_name']
+    else:
+        return contrib["embeds"]["users"]["data"]["attributes"]["full_name"]
+
+
 async def get_metadata_for_ia_item(json_metadata):
     """
     This is meant to take the response JSON metadata and format it for IA buckets, this is not
@@ -87,9 +95,7 @@ async def get_metadata_for_ia_item(json_metadata):
             "creator",
             f'{settings.OSF_API_URL}v2/registrations/{json_metadata["data"]["id"]}/contributors/'
             f"?filter[bibliographic]=true&",
-            lambda contrib: contrib["embeds"]["users"]["data"]["attributes"][
-                "full_name"
-            ],
+            get_contributor_info,
         ),
         get_relationship_attribute(
             "affiliated_institutions",
@@ -214,9 +220,16 @@ async def get_with_retry(url, retry_on=(), sleep_period=None, headers=None):
             return await resp.json()
 
 
-async def get_pages(url, page, result={}, parse_json=None):
+async def get_pages(url, page, result=None, parse_json=None, semaphore=None):
+    if result is None:
+        result = {}
     url = f"{url}?page={page}&page={page}"
-    data = await get_with_retry(url, retry_on=(429,))
+    data = {}
+    if semaphore is None:
+        data = await get_with_retry(url, retry_on=(429,))
+    else:
+        async with semaphore:
+            data = await get_with_retry(url, retry_on=(429,))
 
     result[page] = data["data"]
 
@@ -230,16 +243,21 @@ async def get_additional_contributor_info(response):
     contributor_data_list = []
     for contributor in response["data"]:
         contributor_data = {}
-        embed_data = contributor["embeds"]["users"]["data"]
-        institution_url = embed_data["relationships"]["institutions"]["links"][
-            "related"
-        ]["href"]
-        data = await get_with_retry(institution_url)
-        institution_data = data["data"]
-        institution_list = [
-            institution["attributes"]["name"] for institution in institution_data
-        ]
-        contributor_data["affiliated_institutions"] = institution_list
+        errors = contributor["embeds"]["users"].get('errors')
+        if errors and errors[0]['detail'] == 'The requested user is no longer available.':
+            contributor_data = errors[0]['meta']
+        else:
+            embed_data = contributor["embeds"]["users"]["data"]
+            institution_url = embed_data["relationships"]["institutions"]["links"][
+                "related"
+            ]["href"]
+            data = await get_with_retry(institution_url)
+            institution_data = data["data"]
+            institution_list = [
+                institution["attributes"]["name"] for institution in institution_data
+            ]
+            contributor_data["affiliated_institutions"] = institution_list
+
         contributor.update(contributor_data)
         contributor_data_list.append(contributor)
     response["data"] = contributor_data_list
@@ -255,6 +273,7 @@ async def get_paginated_data(url, parse_json=None):
         data = await parse_json(data)
 
     if is_paginated:
+        paging_semaphore = asyncio.Semaphore(settings.PAGING_SEMAPHORE)
         result = {1: data["data"]}
         total = data["links"].get("meta", {}).get("total") or data["meta"].get("total")
         per_page = data["links"].get("meta", {}).get("per_page") or data["meta"].get(
@@ -263,7 +282,7 @@ async def get_paginated_data(url, parse_json=None):
 
         pages = math.ceil(int(total) / int(per_page))
         for i in range(1, pages):
-            task = get_pages(url, i + 1, result)
+            task = get_pages(url, i + 1, result=result, semaphore=paging_semaphore)
             tasks.append(task)
 
         await asyncio.gather(*tasks)
@@ -436,6 +455,7 @@ async def archive(guid):
 
         await asyncio.gather(*tasks)
 
+        os.chdir(temp_dir)  # bagit changes the cwd so set it here again in case it crashed before changing it back.
         bagit.make_bag(os.path.join(temp_dir, "bag"))
         bag = bagit.Bag(os.path.join(temp_dir, "bag"))
         assert bag.is_valid()
