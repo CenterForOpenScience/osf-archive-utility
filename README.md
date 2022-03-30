@@ -24,7 +24,7 @@ Simply set your add your environment settings in `local.py` file
 and run with bash command:
 
 ```
-    pip3 -r requirements.txt
+    pip3 install -r requirements.txt
     python3 -m osf_python
 ```
 That's it! Your OSF-Pigeon server should be up and running.
