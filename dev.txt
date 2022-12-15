@@ -1,6 +1,7 @@
 -r requirements.txt
 
 pytest==5.4.3
+pytest-asyncio
 pytest-aiohttp
 mock==4.0.2
 responses==0.10.15

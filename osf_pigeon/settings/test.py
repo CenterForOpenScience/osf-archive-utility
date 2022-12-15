@@ -18,3 +18,6 @@ OSF_BEARER_TOKEN = "Temple U is rated"
 
 REG_ID_TEMPLATE = f"osf-registrations-{{guid}}-{ID_VERSION}"
 PROVIDER_ID_TEMPLATE = f"osf-registration-providers-{{provider_id}}-{ID_VERSION}"
+
+PAGING_SEMAPHORE = 5
+FILES_TIMEOUT = 300
