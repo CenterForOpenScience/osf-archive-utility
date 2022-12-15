@@ -2,6 +2,7 @@ FROM python:3.6-slim-buster
 
 # Install requirements
 COPY requirements.txt .
+COPY dev.txt .
 
 RUN pip install -r requirements.txt
 

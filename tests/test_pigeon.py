@@ -307,7 +307,8 @@ class TestMetadata:
                 ],
                 "osf_registry": "OSF Registries",
                 "osf_registration_schema": "Open-Ended Registration",
-                "source": "http://localhost:5000/g752b",
+                "source": "http://localhost:5000/8gqkv/",
+                "osf_project": "http://localhost:8000/v2/nodes/g752b/",
                 "affiliated_institutions": ["The Center For Open Science [Stage]"],
                 "parent": f"https://archive.org/details/osf-registrations-dgkjr-"
                 f"{settings.ID_VERSION}",
@@ -330,7 +331,7 @@ class TestMetadata:
             "title": "Test Component",
             "description": "Test Description",
             "date": "2017-12-20",
-            "moderation_state": "withdrawn",
+            "withdrawal_justification": "We're talkin' about practice!",
         }
         sync_metadata(guid, metadata)
         mock_ia_client.session.get_item.assert_called_with(
@@ -435,7 +436,8 @@ class TestUpload:
                     "article_doi": "",
                     "osf_registry": "OSF Registries",
                     "osf_registration_schema": "Open-Ended Registration",
-                    "source": "http://localhost:5000/g752b",
+                    "source": "http://localhost:5000/8gqkv/",
+                    "osf_project": "http://localhost:8000/v2/nodes/g752b/",
                     "creator": ["John Tordoff"],
                     "affiliated_institutions": ["The Center For Open Science [Stage]"],
                     "osf_subjects": ["Life Sciences"],
@@ -506,7 +508,8 @@ class TestUpload:
                     "article_doi": "",
                     "osf_registry": "OSF Registries",
                     "osf_registration_schema": "Open-Ended Registration",
-                    "source": "http://localhost:5000/g752b",
+                    "source": "http://localhost:5000/8gqkv/",
+                    "osf_project": "http://localhost:8000/v2/nodes/g752b/",
                     "creator": ["John Tordoff"],
                     "affiliated_institutions": ["The Center For Open Science [Stage]"],
                     "osf_subjects": ["Life Sciences"],
