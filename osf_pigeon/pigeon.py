@@ -161,7 +161,8 @@ async def get_metadata_for_ia_item(json_metadata):
         "osf_registration_schema": embeds["registration_schema"]["data"]["attributes"][
             "name"
         ],
-        "osf_project": json_metadata["data"]["relationships"]["registered_from"]["links"]["related"]["href"],
+        "osf_project":
+            json_metadata["data"]["relationships"]["registered_from"]["links"]["related"]["href"],
         "source": json_metadata["data"]["links"]["html"],
         **relationship_data,
     }
@@ -412,7 +413,14 @@ async def archive(guid):
     ) as temp_dir:
         os.mkdir(os.path.join(temp_dir, "bag"))
         # await first to check if withdrawn
-        metadata = await get_registration_metadata(guid, os.path.join(temp_dir, "bag"), "registration.json")
+        metadata = await get_registration_metadata(
+            guid,
+            os.path.join(
+                temp_dir,
+                "bag"
+            ),
+            "registration.json"
+        )
         tasks = [
             write_datacite_metadata(guid, temp_dir, metadata),
             dump_json_to_dir(
@@ -466,7 +474,8 @@ async def archive(guid):
 
         await asyncio.gather(*tasks)
 
-        os.chdir(temp_dir)  # bagit changes the cwd so set it here again in case it crashed before changing it back.
+        # bagit changes the cwd so set it here again in case it crashed before changing it back.
+        os.chdir(temp_dir)
         bagit.make_bag(os.path.join(temp_dir, "bag"))
         bag = bagit.Bag(os.path.join(temp_dir, "bag"))
         assert bag.is_valid()
