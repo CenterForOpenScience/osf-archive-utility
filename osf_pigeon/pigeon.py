@@ -428,6 +428,17 @@ async def archive(guid):
                 name="contributors.json",
                 parse_json=get_additional_contributor_info,
             ),
+            dump_json_to_dir(
+                from_url=f"{settings.OSF_API_URL}v2/registrations/{guid}/schema_responses/"
+                f"?page[size]=100",
+                to_dir=os.path.join(temp_dir, "bag"),
+                name="schema_responses.json",
+            ),
+            dump_json_to_dir(
+                from_url=metadata["data"]["relationships"]["registration_schema"]["links"]["related"]["href"],
+                to_dir=os.path.join(temp_dir, "bag"),
+                name="registration_schema.json",
+            ),
         ]
         # only download archived data if there are files
         file_count = metadata["data"]["relationships"]["files"]["links"]["related"][

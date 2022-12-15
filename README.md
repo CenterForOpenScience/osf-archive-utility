@@ -156,5 +156,9 @@ Each archived registration includes four json files and one xml file with metada
      affiliated institutions.
   - logs.json
     - A list of all that registrations logs. 
+  - schema_responses.json
+    - A list of all the registration's schema responses. 
+  - registration_schema.json
+    - A copy of the registration schema which the registration is responding to. 
   - datacite.xml
     - This contains the datacite's metadata for the DOI corresponding to that registration,
