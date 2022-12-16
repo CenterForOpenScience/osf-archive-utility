@@ -1,4 +1,4 @@
-FROM python:3.11.1-slim-buster
+FROM python:3.11.1-alpine
 
 # Install requirements
 COPY requirements.txt .
