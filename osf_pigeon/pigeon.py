@@ -421,6 +421,7 @@ async def archive(guid):
             ),
             "registration.json"
         )
+        schema_metadata = metadata["data"]["relationships"]["registration_schema"]
         tasks = [
             write_datacite_metadata(guid, temp_dir, metadata),
             dump_json_to_dir(
@@ -443,7 +444,7 @@ async def archive(guid):
                 name="schema_responses.json",
             ),
             dump_json_to_dir(
-                from_url=metadata["data"]["relationships"]["registration_schema"]["links"]["related"]["href"],
+                from_url=schema_metadata["links"]["related"]["href"],
                 to_dir=os.path.join(temp_dir, "bag"),
                 name="registration_schema.json",
             ),

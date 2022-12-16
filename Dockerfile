@@ -1,4 +1,4 @@
-FROM python:3.6-slim-buster
+FROM python:3.11.1-slim-buster
 
 # Install requirements
 COPY requirements.txt .
