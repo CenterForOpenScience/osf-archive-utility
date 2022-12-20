@@ -20,11 +20,11 @@ and the DOI has been minted by the start of the archive job and the registration
 Install/Run
 ============
 
-Simply set your add your environment settings in `local.py` file 
+Simply set your environment settings in `local.py` file 
 and run with bash command:
 
 ```
-    pip3 -r requirements.txt
+    pip3 install -r requirements.txt
     python3 -m osf_python
 ```
 That's it! Your OSF-Pigeon server should be up and running.
@@ -152,9 +152,13 @@ Each archived registration includes four json files and one xml file with metada
  - wiki.json
     - The text and metadata details associated with that registration's wiki.
  - contributors.json
-    - The list of contributor to the registration including extra information about their ORCID identifiers and
+    - The list of contributors to the registration including extra information about their ORCID identifiers and
      affiliated institutions.
   - logs.json
     - A list of all that registrations logs. 
+  - schema_responses.json
+    - A list of all the registration's schema responses. 
+  - registration_schema.json
+    - A copy of the registration schema which the registration is responding to. 
   - datacite.xml
     - This contains the datacite's metadata for the DOI corresponding to that registration,

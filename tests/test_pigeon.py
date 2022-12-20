@@ -18,6 +18,7 @@ from aioresponses import aioresponses
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 
+@pytest.mark.asyncio
 class TestStreamFilesToDir:
     @pytest.fixture
     def guid(self):
@@ -49,6 +50,7 @@ class TestStreamFilesToDir:
             assert open(os.path.join(temp_dir, zip_name), "rb").read() == zip_data
 
 
+@pytest.mark.asyncio
 class TestDumpJSONFilesToDir:
     @pytest.fixture
     def guid(self):
@@ -78,6 +80,7 @@ class TestDumpJSONFilesToDir:
                 assert info == json.loads(json_data)
 
 
+@pytest.mark.asyncio
 class TestDumpJSONFilesToDirMultipage:
     @pytest.fixture
     def guid(self):
@@ -133,6 +136,7 @@ class TestDumpJSONFilesToDirMultipage:
                 assert info == expected_json
 
 
+@pytest.mark.asyncio
 class TestContributors:
     @pytest.fixture
     def guid(self):
@@ -186,6 +190,7 @@ class TestContributors:
                 assert info[0]["affiliated_institutions"] == ["Center For Open Science"]
 
 
+@pytest.mark.asyncio
 class TestDatacite:
     @pytest.fixture
     def guid(self):
@@ -204,10 +209,17 @@ class TestDatacite:
             yield temp_dir
 
     async def test_get_datacite_metadata(self, guid, mock_datacite, temp_dir, metadata):
-        xml = await write_datacite_metadata(guid, temp_dir, metadata)
-        assert xml == "pretend this is XML."
+        with aioresponses() as m:
+            m.get(
+                "https://mds.test.datacite.org/metadata/10.70102/osf.io/guid0",
+                status=200,
+                body=b"pretend this is XML.",
+            )
+            xml = await write_datacite_metadata(guid, temp_dir, metadata)
+            assert xml == "pretend this is XML."
 
 
+@pytest.mark.asyncio
 class TestMetadata:
     @pytest.fixture
     def guid(self):
@@ -307,7 +319,8 @@ class TestMetadata:
                 ],
                 "osf_registry": "OSF Registries",
                 "osf_registration_schema": "Open-Ended Registration",
-                "source": "http://localhost:5000/g752b",
+                "source": "http://localhost:5000/8gqkv/",
+                "osf_project": "http://localhost:8000/v2/nodes/g752b/",
                 "affiliated_institutions": ["The Center For Open Science [Stage]"],
                 "parent": f"https://archive.org/details/osf-registrations-dgkjr-"
                 f"{settings.ID_VERSION}",
@@ -330,7 +343,7 @@ class TestMetadata:
             "title": "Test Component",
             "description": "Test Description",
             "date": "2017-12-20",
-            "moderation_state": "withdrawn",
+            "withdrawal_justification": "We're talkin' about practice!",
         }
         sync_metadata(guid, metadata)
         mock_ia_client.session.get_item.assert_called_with(
@@ -346,6 +359,7 @@ class TestMetadata:
         mock_ia_client.item.modify_metadata.assert_any_call(metadata)
 
 
+@pytest.mark.asyncio
 class TestUpload:
     @pytest.fixture
     def guid(self):
@@ -435,7 +449,8 @@ class TestUpload:
                     "article_doi": "",
                     "osf_registry": "OSF Registries",
                     "osf_registration_schema": "Open-Ended Registration",
-                    "source": "http://localhost:5000/g752b",
+                    "source": "http://localhost:5000/8gqkv/",
+                    "osf_project": "http://localhost:8000/v2/nodes/g752b/",
                     "creator": ["John Tordoff"],
                     "affiliated_institutions": ["The Center For Open Science [Stage]"],
                     "osf_subjects": ["Life Sciences"],
@@ -506,7 +521,8 @@ class TestUpload:
                     "article_doi": "",
                     "osf_registry": "OSF Registries",
                     "osf_registration_schema": "Open-Ended Registration",
-                    "source": "http://localhost:5000/g752b",
+                    "source": "http://localhost:5000/8gqkv/",
+                    "osf_project": "http://localhost:8000/v2/nodes/g752b/",
                     "creator": ["John Tordoff"],
                     "affiliated_institutions": ["The Center For Open Science [Stage]"],
                     "osf_subjects": ["Life Sciences"],
